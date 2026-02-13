@@ -13,11 +13,16 @@ DROP TABLE IF EXISTS Recording;
 CREATE TABLE IF NOT EXISTS Recording(
     id INT NOT NULL,
     file_name VARCHAR(255),
-    rec_date DATE NOT NULL,
     microphone_id INT NOT NULL,
+    rec_date DATE NOT NULL,
     start_time TIME NOT NULL,
     stop_time TIME NOT NULL,
-    recording_length INT NOT NULL,
+    duration INT NOT NULL,
+    filesize INT NOT NULL,
+    samplerate INT NOT NULL,
+    channels INT NOT NULL,
+    bitdepth INT NOT NULL,
+
 
     PRIMARY KEY (id),
     FOREIGN KEY (microphone_id) REFERENCES Microphone(id)
