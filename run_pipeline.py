@@ -10,6 +10,7 @@ import os
 
 from datetime import datetime
 from audio_intake import load_audio
+from utils.database_connector import DatabaseConnector
 
 if __name__ == '__main__':
 
@@ -40,6 +41,10 @@ if __name__ == '__main__':
                  f'\t\tStarted at= {datetime.now()}\n'
                  f'\t\tLoading audio= {args.load_audio}')
 
+    database_connection = DatabaseConnector(os.getenv('DATABASE_USER'), os.getenv('DATABASE_PASSWORD'), 'AuditoryMonitoring')
+
     if args.load_audio:
         logging.info('Starting to load audio files')
-        load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'))
+        load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), database_connection)
+
+    database_connection.close_connection()

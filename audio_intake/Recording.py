@@ -3,6 +3,8 @@ Class to store recording info
 """
 from tinytag import TinyTag
 from datetime import datetime, timedelta
+import hashlib
+import os
 
 class Recording:
     def __init__(self, old_file_path, filename):
@@ -11,6 +13,7 @@ class Recording:
         self._parse_filename_to_metadata()
         self._get_audio_metadata()
         self.stop_time = self._calculate_stop_time()
+        self.rec_id = self._generate_hashed_id()
 
     def _get_audio_metadata(self):
         '''
@@ -46,8 +49,19 @@ class Recording:
         stop_time = dt + timedelta(seconds=self.duration)
         return stop_time.time()
 
+    def _generate_hashed_id(self):
+        hashtext = self.filename + str(self.rec_date) + str(self.start_time) + self.mic_id
+        return hashlib.md5(hashtext.encode("utf-8")).hexdigest()
+
+    def set_new_filepath(self, save_location):
+        year = str(self.rec_date.year)
+        month = str(self.rec_date.month)
+
+        self.new_file_path = os.path.join(save_location, year, month, self.filename)
+
     def __str__(self):
         return f'Recording details:\n' \
+               f'ID= {self.rec_id}\n' \
                f'filepath= {self.old_file_path}\n' \
                f'filename= {self.filename}\n' \
                f'mic_id= {self.mic_id}\n' \
