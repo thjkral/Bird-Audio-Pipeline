@@ -2,6 +2,7 @@
 Connect to the database and perform tasks
 """
 import logging
+import pandas as pd
 from sqlalchemy import create_engine
 
 
@@ -90,3 +91,11 @@ class DatabaseConnector:
         count_query = f'SELECT COUNT(*) FROM {table_name}'
         row_count = self.db_connection.execute(count_query).fetchone()
         return int(row_count[0])
+
+
+    def get_recordings_for_validation(self):
+        recordings_query = f"""
+                            SELECT id, duration, file_size, samplerate, bitdepth
+                            FROM Recording;
+                            """
+        return pd.read_sql(recordings_query, self.db_connection)

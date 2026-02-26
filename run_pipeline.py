@@ -10,6 +10,7 @@ import os
 
 from datetime import datetime
 from audio_intake import load_audio
+from audio_intake import validate_audio
 from utils.database_connector import DatabaseConnector
 
 if __name__ == '__main__':
@@ -34,6 +35,7 @@ if __name__ == '__main__':
     arguments = argparse.ArgumentParser(description='Pipeline for processing ecological monitoring of birds')
     arguments.add_argument('-l', '--load_audio', action='store_true', help='Load audio')
     arguments.add_argument('-d', '--date', action='store', help='Date to load from. Keep empty to load all')
+    arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
 
     args = arguments.parse_args()
 
@@ -46,5 +48,10 @@ if __name__ == '__main__':
     if args.load_audio:
         logging.info('Starting to load audio files')
         load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), database_connection)
+
+    if args.validate_audio:
+        logging.info('VALIDATING AUDIO')
+        validate_audio.validate(database_connection)
+
 
     database_connection.close_connection()
