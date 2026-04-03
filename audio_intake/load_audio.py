@@ -15,12 +15,12 @@ def _copy_recording_file(recording):
         logging.error(f'Problem while copying file {recording.old_file_path} to {recording.new_file_path}:\n{err}')
 
 
-def start_load(root_dir, db_conn):
+def start_load(root_dir, db_conn, batch_id):
     '''
     Loops over all audio files in a given directory, creates objects and saves them to the database.
     :param: Root folder where all data is stored
     '''
-    logging.info(f'Looking for data at location: {root_dir}')
+    logging.info(f'Looking for data at location: {root_dir}.')
     recordings_list = []
     for file in os.listdir(root_dir):  # generate Recording objects for each audiofile
         filename = os.fsdecode(file)
@@ -30,9 +30,10 @@ def start_load(root_dir, db_conn):
             recordings_list.append(recording)
 
     new_file_count = len(recordings_list)
-    logging.info(f'Identified {new_file_count} new audio files to process. Starting load sequence...')
+    logging.info(f'Identified {new_file_count} new audio files to process. Starting load sequence with batch ID {batch_id}...')
 
-    rows_in_db_before = db_conn.get_number_of_rows('Recording')
+    successful_inserts = 0
+    errors = 0
 
     for rec in recordings_list:  # copy each record to a new location with a directory tree based on the recording date
         rec.set_new_filepath(os.getenv('STORE_LOCATION'))
@@ -42,15 +43,17 @@ def start_load(root_dir, db_conn):
             logging.info(f'Copied audio file {rec.filename} to new location')
 
             logging.info(f'Adding recording {rec.filename} to database')
-            db_conn.insert_recording(rec)
+            result = db_conn.insert_staging_recording(rec, batch_id)
+
+            if result == 'Succes':
+                successful_inserts += 1
+            elif result is None:
+                errors += 1
+
         except Exception as err:
             logging.error(f'Problem while copying file {rec.old_file_path} to {rec.new_file_path}:\n{err}')
 
-    rows_in_db_after = db_conn.get_number_of_rows('Recording')
-    rows_added = rows_in_db_after - rows_in_db_before
-    if rows_added == new_file_count:
-        logging.info('All new recordings added to the database.')
-    elif rows_added == 0:
-        logging.warning('Added no new recordings to the database!')
-    elif rows_added < new_file_count and rows_added != 0:
-        logging.warning(f'New recordings partially loaded. Found {new_file_count - rows_added} possible duplicates.')
+    logging.info(f'Finished loading to staging.\n'
+                 f'\t{successful_inserts}/{new_file_count}: Successfull\n'
+                 f'\t{errors}/{new_file_count}: Failed')
+

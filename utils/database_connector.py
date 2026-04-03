@@ -4,6 +4,7 @@ Connect to the database and perform tasks
 import logging
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 
 
 class DatabaseConnector:
@@ -46,14 +47,14 @@ class DatabaseConnector:
         except Exception as err:
             logging.error(f'Cannot close the database connection:\n{err}')
 
-    def insert_recording(self, recording_object):
+    def insert_staging_recording(self, recording_object, batch_id):
         '''
-        Takes a Recording object and inserts in into the database. When a duplicate (ID based) is found, the row is
+        Takes a Recording object and inserts in into the staging table. When a duplicate (ID based) is found, the row is
         ignored.
         :param recording_object: Object holding all necessary information for one row.
         '''
         query_text = f"""
-                        INSERT IGNORE INTO Recording(
+                        INSERT INTO Recording_staging(
                             id,
                             file_name,
                             microphone_id,
@@ -65,7 +66,9 @@ class DatabaseConnector:
                             file_size,
                             samplerate,
                             channels,
-                            bitdepth)
+                            bitdepth,
+                            file_hash,
+                            batch_id)
                         VALUES(
                         '{recording_object.rec_id}',
                         '{recording_object.filename}',
@@ -78,24 +81,55 @@ class DatabaseConnector:
                         {recording_object.filesize},
                         {recording_object.samplerate},
                         {recording_object.channels},
-                        {recording_object.bitdepth})
+                        {recording_object.bitdepth},
+                        '{recording_object.file_hash}',
+                        {batch_id})
                         ;
                         """
         try:
-            self.db_connection.execute(query_text)
+            with self.db_connection.begin():
+                self.db_connection.execute(query_text)
+            return 'Succes'
         except Exception as err:
-            logging.error(f'Cannot add a row for the audio file named <{recording_object.filename}> to the Recording table:\n{err}')
+            logging.error(
+                f'Cannot add a row for the audio file named <{recording_object.filename}> to the Recording table:\n{err}')
+            return None
 
+    def _add_duplicate(self, recording_object):
+        duplicate_query = f"""
+                            INSERT INTO Recording_duplicates(
+                            id,
+                            file_name,
+                            rec_date,
+                            start_time,
+                            stop_time,
+                            file_hash)
+                            VALUES(
+                            '{recording_object.rec_id}',
+                            '{recording_object.filename}',
+                            '{recording_object.rec_date}',
+                            '{recording_object.start_time}',
+                            '{recording_object.stop_time}',
+                            '{recording_object.file_hash}'
+                            );
+                           """
+        try:
+            with self.db_connection.begin():
+                self.db_connection.execute(duplicate_query)
+        except Exception as err:
+            logging.error(f'Cannot add recording <{recording_object.filename}> as a duplicate:\n{err}')
 
-    def get_number_of_rows(self, table_name):
-        count_query = f'SELECT COUNT(*) FROM {table_name}'
-        row_count = self.db_connection.execute(count_query).fetchone()
-        return int(row_count[0])
+    def get_latest_batch_id(self):
+        batch_id_query = f'SELECT DISTINCT batch_id FROM Recording_staging ORDER BY batch_id DESC LIMIT 1'
+        highest_id = self.db_connection.execute(batch_id_query).fetchone()
+        if highest_id:
+            return int(highest_id[0])
+        else:
+            return 0
 
-
-    def get_recordings_for_validation(self):
-        recordings_query = f"""
-                            SELECT id, duration, file_size, samplerate, bitdepth
-                            FROM Recording;
-                            """
-        return pd.read_sql(recordings_query, self.db_connection)
+    def get_recordings_for_cleaning(self, batch_id):
+        try:
+            recordings_query = f"SELECT * FROM Recording_staging WHERE batch_id = {batch_id};"
+            return pd.read_sql(recordings_query, self.db_connection)
+        except Exception as err:
+            logging.error(f'Cannot fetch dataframe for cleaning from database!:\n{err}')

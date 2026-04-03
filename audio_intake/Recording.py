@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import hashlib
 import os
 
+
 class Recording:
     def __init__(self, old_file_path, filename):
         self.old_file_path = old_file_path
@@ -14,11 +15,12 @@ class Recording:
         self._get_audio_metadata()
         self.stop_time = self._calculate_stop_time()
         self.rec_id = self._generate_hashed_id()
+        self.file_hash = self._generate_file_hash()
 
     def _get_audio_metadata(self):
-        '''
+        """
         Sets metadata fields of the audio using the tinytag module. This information is used to monitor quality.
-        '''
+        """
         try:
             tag = TinyTag.get(self.old_file_path)
             self.duration = tag.duration
@@ -30,10 +32,10 @@ class Recording:
             print(f"Error extracting metadata: {e}")
 
     def _parse_filename_to_metadata(self):
-        '''
+        """
         The filename of each recording contains the name of the microphone, the time when the recording was started, and
         the date. This function parses the filename and assigns them to metadata fields.
-        '''
+        """
         filename_extention_removed = self.filename.replace('.wav', '')
         file_metadata = filename_extention_removed.split('_')
 
@@ -42,9 +44,9 @@ class Recording:
         self.start_time = datetime.strptime(file_metadata[2], '%H%M%S').time()
 
     def _calculate_stop_time(self):
-        '''
+        """
         Adds the duration of the recording to the start time. This can later be used to validate recordings.
-        '''
+        """
         dt = datetime.combine(self.rec_date, self.start_time)
         stop_time = dt + timedelta(seconds=self.duration)
         return stop_time.time()
@@ -52,6 +54,15 @@ class Recording:
     def _generate_hashed_id(self):
         hashtext = self.filename + str(self.rec_date) + str(self.start_time) + self.mic_id
         return hashlib.md5(hashtext.encode("utf-8")).hexdigest()
+
+    def _generate_file_hash(self, chunk_size=8192):
+        hasher = hashlib.sha256()
+
+        with open(self.old_file_path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                hasher.update(chunk)
+
+        return hasher.hexdigest()
 
     def set_new_filepath(self, save_location):
         year = str(self.rec_date.year)
@@ -72,4 +83,5 @@ class Recording:
                f'size (bytes)= {self.filesize}\n' \
                f'samplerate= {self.samplerate}\n' \
                f'channels= {self.channels}\n' \
-               f'bitdepth= {self.bitdepth}'
+               f'bitdepth= {self.bitdepth}' \
+               f'filehash= {self.file_hash}'
