@@ -1,0 +1,8 @@
+#CORE
+python-dotenv
+tinytag
+pandas
+
+#DATABASE
+sqlalchemy
+pymysql
