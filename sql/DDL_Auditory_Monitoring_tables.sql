@@ -35,18 +35,28 @@ CREATE TABLE IF NOT EXISTS Recording_staging(
 );
 
 
-CREATE TABLE IF NOT EXISTS Recording_duplicates(
-    id VARCHAR(64) NOT NULL,
+CREATE TABLE IF NOT EXISTS Recording_rejected(
+    id VARCHAR(64),
     file_name VARCHAR(255),
-    rec_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    stop_time TIME NOT NULL,
-    file_hash CHAR(64) NOT NULL,
-    batch_id INT NOT NULL,
+    microphone_id VARCHAR(10),
+    rec_date DATE,
+    start_time TIME,
+    stop_time TIME,
+    duration INT,
+    file_path VARCHAR(255),
+    file_size INT,
+    samplerate INT,
+    channels INT,
+    bitdepth INT,
+    file_hash CHAR(64),
+    batch_id INT,
+    is_duplicate BOOLEAN DEFAULT False,
+    duplicate_type ENUM('batch', 'historical') DEFAULT NULL,
+    is_null BOOLEAN DEFAULT False,
     rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 );
 
-CREATE TABLE IF NOT EXISTS Recording_validation(
+CREATE TABLE IF NOT EXISTS Recording_cleaned(
     id VARCHAR(64) NOT NULL UNIQUE,
     file_name VARCHAR(255),
     microphone_id VARCHAR(10) NOT NULL,
@@ -59,10 +69,7 @@ CREATE TABLE IF NOT EXISTS Recording_validation(
     samplerate INT NOT NULL,
     channels INT NOT NULL,
     bitdepth INT NOT NULL,
-    file_hash CHAR(64) UNIQUE NOT NULL,
-    is_duplicate BOOLEAN,
-    duplicate_type ENUM('batch', 'historical'),
-    is_null BOOLEAN,
+    file_hash CHAR(64) UNIQUE NOT NULL
 
     PRIMARY KEY (id),
     FOREIGN KEY (microphone_id) REFERENCES Microphone(id) -- make this a check. Recordings must be matched to a mic

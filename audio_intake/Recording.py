@@ -52,7 +52,7 @@ class Recording:
         return stop_time.time()
 
     def _generate_hashed_id(self):
-        hashtext = self.filename + str(self.rec_date) + str(self.start_time) + self.mic_id
+        hashtext = f"{self.mic_id}_{self.rec_date}_{self.start_time}"
         return hashlib.md5(hashtext.encode("utf-8")).hexdigest()
 
     def _generate_file_hash(self, chunk_size=8192):
@@ -69,6 +69,27 @@ class Recording:
         month = str(self.rec_date.month)
 
         self.new_file_path = os.path.join(save_location, year, month, self.filename)
+
+    def to_db_params(self, batch_id):
+        """
+        Returns a dictionary of parameters suitable for the database query.
+        """
+        return {
+            "id": self.rec_id,
+            "filename": self.filename,
+            "microphone_id": self.mic_id,
+            "rec_date": self.rec_date,
+            "start_time": self.start_time,
+            "stop_time": self.stop_time,
+            "duration": self.duration,
+            "file_path": self.new_file_path,
+            "file_size": self.filesize,
+            "samplerate": self.samplerate,
+            "channels": self.channels,
+            "bitdepth": self.bitdepth,
+            "file_hash": self.file_hash,
+            "batch_id": batch_id
+        }
 
     def __str__(self):
         return f'Recording details:\n' \
