@@ -1,9 +1,8 @@
 import logging
-import os
 from datetime import datetime
 import pandas as pd
 
-from database.CleaningService import CleaningService
+from database import CleaningService
 
 
 def _check_null_values(dataframe, db, field_list=None):
@@ -69,10 +68,10 @@ def _convert_timedeltas(df):
     return df
 
 
-def start_clean(db_credentials, batch_id):
+def start_clean(db_engine, batch_id):
     logging.info(f'Cleaning data with batch ID: {batch_id}')
 
-    clean_service = CleaningService(db_credentials)
+    clean_service = CleaningService(db_engine)
 
     batch_df = clean_service.get_recordings_for_cleaning(batch_id)
 

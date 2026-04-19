@@ -6,6 +6,7 @@ import os
 import logging
 import shutil
 from .Recording import Recording
+from database import InsertService
 
 
 def _copy_recording_file(recording):
@@ -15,11 +16,14 @@ def _copy_recording_file(recording):
         logging.error(f'Problem while copying file {recording.old_file_path} to {recording.new_file_path}:\n{err}')
 
 
-def start_load(root_dir, db_conn, batch_id):
+def start_load(root_dir, db_engine, batch_id):
     '''
     Loops over all audio files in a given directory, creates objects and saves them to the database.
     :param: Root folder where all data is stored
     '''
+
+    inserter = InsertService(db_engine)
+
     logging.info(f'Looking for data at location: {root_dir}.')
     recordings_list = []
     for file in os.listdir(root_dir):  # generate Recording objects for each audiofile
@@ -43,7 +47,7 @@ def start_load(root_dir, db_conn, batch_id):
             logging.info(f'Copied audio file {rec.filename} to new location')
 
             logging.info(f'Adding recording {rec.filename} to database')
-            result = db_conn.insert_staging_recording(rec, batch_id)
+            result = inserter.insert_staging_recording(rec, batch_id)
 
             if result == 'Succes':
                 successful_inserts += 1

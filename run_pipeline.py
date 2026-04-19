@@ -11,8 +11,7 @@ import os
 from datetime import datetime
 from audio_intake import load_audio
 from clean_and_validate import clean_audio, validate_audio
-from database.MaintenanceService import DatabaseMaintenance
-from utils.database_connector import DatabaseConnector
+from database import Engine, DatabaseMaintenance
 
 def _get_db_credentials_dict():
     db_credentials_dict = {'user': os.getenv('DATABASE_USER'),
@@ -53,22 +52,23 @@ if __name__ == '__main__':
                  f'\t\tCleaning audio= {args.clean_audio}\n'
                  f'\t\tValidating audio= {args.validate_audio}')
 
-    database_connection = DatabaseConnector(os.getenv('DATABASE_USER'), os.getenv('DATABASE_PASSWORD'), os.getenv('DATABASE_NAME'))
     db_credentials = _get_db_credentials_dict()
 
-    database_maintenance = DatabaseMaintenance(db_credentials)
+    db_engine = Engine(db_credentials)
+
+    database_maintenance = DatabaseMaintenance(db_engine.engine)
     database_maintenance.create_tables_if_not_exist()
 
 
-    curr_batch_id = database_connection.get_latest_batch_id()
+    curr_batch_id = db_engine.get_latest_batch_id()
 
     if args.load_audio:
         logging.info('Starting to load audio files')
-        load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), database_connection, curr_batch_id+1)
+        load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), db_engine.engine, curr_batch_id+1)
 
     if args.clean_audio:
         logging.info('CLEANING AUDIO')
-        clean_audio.start_clean(db_credentials, curr_batch_id)
+        clean_audio.start_clean(db_engine.engine, curr_batch_id)
 
     if args.validate_audio:
         logging.info('VALIDATING AUDIO')
