@@ -39,6 +39,7 @@ if __name__ == '__main__':
                         ])
 
     arguments = argparse.ArgumentParser(description='Pipeline for processing ecological monitoring of birds')
+    arguments.add_argument('-a', '--all', action='store_true', help='Run all processes')
     arguments.add_argument('-l', '--load_audio', action='store_true', help='Load audio')
     arguments.add_argument('-d', '--date', action='store', help='Date to load from. Keep empty to load all')
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
@@ -62,12 +63,14 @@ if __name__ == '__main__':
 
     curr_batch_id = db_engine.get_latest_batch_id()
 
-    if args.load_audio:
+    if args.load_audio or args.all:
         logging.info('Starting to load audio files')
         load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), db_engine.engine, curr_batch_id+1)
 
-    if args.clean_audio:
+    if args.clean_audio or args.all:
         logging.info('CLEANING AUDIO')
+        if args.all:
+            curr_batch_id += 1
         clean_audio.start_clean(db_engine.engine, curr_batch_id)
 
     if args.validate_audio:
