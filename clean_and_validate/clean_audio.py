@@ -1,9 +1,8 @@
 import logging
-import os
 from datetime import datetime
 import pandas as pd
 
-from database.CleaningService import CleaningService
+from database import CleaningService
 
 
 def _check_null_values(dataframe, db, field_list=None):
@@ -59,27 +58,15 @@ def _append_to_log_table(dataframe, reject_type, db_conn):
         db_conn.insert_rejected_recordings(dataframe)
 
 
-def _convert_timedeltas(df):
-    df['start_time'] = pd.to_timedelta(df['start_time']).dt.to_pytimedelta()
-    df['start_time'] = df['start_time'].apply(lambda x: (datetime.min + x).time())
-
-    df['stop_time'] = pd.to_timedelta(df['stop_time']).dt.to_pytimedelta()
-    df['stop_time'] = df['stop_time'].apply(lambda x: (datetime.min + x).time())
-
-    return df
-
-
-def start_clean(db_credentials, batch_id):
+def start_clean(db_engine, batch_id):
     logging.info(f'Cleaning data with batch ID: {batch_id}')
 
-    clean_service = CleaningService(db_credentials)
+    clean_service = CleaningService(db_engine)
 
     batch_df = clean_service.get_recordings_for_cleaning(batch_id)
 
     if not batch_df.empty or batch_df is not None:
         batch_df.drop('ingestion_at', axis=1, inplace=True)
-
-        batch_df = _convert_timedeltas(batch_df)
 
         rows_in_batch = len(batch_df)
         logging.info(f'Number of recordings in batch: {len(batch_df)}')

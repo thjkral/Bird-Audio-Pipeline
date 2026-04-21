@@ -29,7 +29,7 @@ class Engine:
         try:
             connection_string = f"mysql+pymysql://{self.user}:{self.password}@localhost/{self.database}?charset=utf8mb4"
             engine = create_engine(connection_string, future=True)
-            logging.info(f'Database: {__name__} created successfully')
+            logging.info(f'Engine created successfully')
             return engine
         except Exception as err:
             logging.critical(f'Cannot create engine:\n{err}')
@@ -53,19 +53,5 @@ class Engine:
         except Exception as err:
             logging.critical(f'Cannot fetch latest batch_id:\n{err}')
 
-    def get_recordings_for_cleaning(self, batch_id):
-        """
-        Returns a pandas DataFrame of recordings for a given batch_id
-        """
-        recordings_query = text("""
-                                SELECT *
-                                FROM Recording_staging
-                                WHERE batch_id = :batch_id
-                                """)
-        try:
-            with self.engine.connect() as conn:
-                return pd.read_sql_query(recordings_query, conn, params={"batch_id": batch_id})
-        except Exception as err:
-            logging.error(f'Cannot fetch dataframe for batch {batch_id}:\n{err}')
-            return pd.DataFrame()
+
 

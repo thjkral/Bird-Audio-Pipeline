@@ -1,39 +1,74 @@
-from database.Engine import Engine
 import logging
 import pandas as pd
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 
-from database.tables import Recording_cleaned
+from database.tables import Recording_cleaned, Recording_staging, Recording_rejected
 
-class CleaningService(Engine):
-    def __init__(self, db_credentials):
-        super().__init__(db_credentials)
+class CleaningService():
+    def __init__(self, engine):
+        self.engine = engine
 
-    def insert_rejected_recordings(self, dataframe):
+
+    def get_recordings_for_cleaning(self, batch_id):
+        """
+        Returns a pandas DataFrame of recordings for a given batch_id
+        """
+        stmt = (
+            select(Recording_staging)
+            .where(Recording_staging.c.batch_id == batch_id)
+        )
+
         try:
             with self.engine.connect() as conn:
-                dataframe.to_sql(
-                    name="Recording_rejected",
-                    con=conn,
-                    if_exists="append",  # VERY important
-                    index=False,
-                    method="multi",  # performance boost
-                    chunksize=1000  # avoids memory / transaction issues
-                )
+                result = conn.execute(stmt)
+
+                # Convert to DataFrame safely
+                df = pd.DataFrame(result.mappings().all())
+                return df
+
+        except Exception as err:
+            logging.error(f'Cannot fetch dataframe for batch {batch_id}:\n{err}')
+            return pd.DataFrame()
+
+
+    def insert_rejected_recordings(self, df, batch_size=1000):
+        """
+        Inserts rejected records using SQLAlchemy Core (no to_sql).
+        """
+        if df.empty:
+            return
+
+        stmt = insert(Recording_rejected)
+
+        try:
+            with self.engine.begin() as conn:
+                for i in range(0, len(df), batch_size):
+                    batch = df.iloc[i:i + batch_size]
+
+                    conn.execute(
+                        stmt,
+                        batch.to_dict(orient="records")
+                    )
+
         except Exception as err:
             logging.error(f'Cannot insert rejected recordings:\n{err}')
 
 
     def get_unique_historic_hashes(self):
+        """
+        Returns a DataFrame of existing file_hash values.
+        """
+        stmt = select(Recording_cleaned.c.file_hash)
+
         try:
-            existing_keys = pd.read_sql(
-                "SELECT file_hash FROM Recording_cleaned",
-                self.engine
-            )
-            return existing_keys
+            with self.engine.connect() as conn:
+                result = conn.execute(stmt)
+                df = pd.DataFrame(result.mappings().all())
+                return df
+
         except Exception as err:
             logging.error(f'Cannot get unique historic hashes:\n{err}')
-            return None
+            return pd.DataFrame()
 
 
     def insert_cleaned_recordings(self, df, batch_size=1000):

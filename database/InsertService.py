@@ -1,45 +1,49 @@
-import Engine
 import logging
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, insert
+from database.tables import Recording_staging
 
-class InsertService(Engine):
-    def __init__(self, user, password, database):
-        super().__init__(user, password, database)
+class InsertService():
+    def __init__(self, engine):
+        self.engine = engine
 
-    def insert_staging_recording(self, recording_object, batch_id):
+
+    def _recording_to_staging_dict(self, recording, batch_id):
         """
-        Inserts a recording into Recording_staging. Transaction-safe.
+        Maps a Recording domain object to a dict matching Recording_staging table.
         """
-        query_text = text(f"""
-            INSERT INTO Recording_staging(
-                id,
-                file_name,
-                microphone_id,
-                rec_date,
-                start_time,
-                stop_time,
-                duration,
-                file_path,
-                file_size,
-                samplerate,
-                channels,
-                bitdepth,
-                file_hash,
-                batch_id
-            ) VALUES (
-                :id, :filename, :microphone_id, :rec_date, :start_time, :stop_time,
-                :duration, :file_path, :file_size, :samplerate, :channels,
-                :bitdepth, :file_hash, :batch_id
-            )
-        """)
-        params = recording_object.to_db_params(batch_id)
+        return {
+            "id": recording.rec_id,
+            "file_name": recording.filename,
+            "microphone_id": recording.mic_id,
+            "rec_date": recording.rec_date,
+            "start_time": recording.start_time,
+            "stop_time": recording.stop_time,
+            "duration": recording.duration,
+            "file_path": recording.new_file_path,
+            "file_size": recording.filesize,
+            "samplerate": recording.samplerate,
+            "channels": recording.channels,
+            "bitdepth": recording.bitdepth,
+            "file_hash": recording.file_hash,
+            "batch_id": batch_id
+        }
+
+
+    def insert_staging_recording(self, recording, batch_id):
+        """
+        Inserts a single recording into Recording_staging.
+        """
+        stmt = insert(Recording_staging)
+
+        params = self._recording_to_staging_dict(recording, batch_id)
 
         try:
-            with Session(self.engine) as session:
-                session.execute(query_text, params)
-                session.commit()
+            with self.engine.begin() as conn:
+                conn.execute(stmt, [params])
             return "Success"
+
         except Exception as err:
-            logging.error(f'Cannot add recording {recording_object.filename}:\n{err}')
+            logging.error(
+                f'Cannot add recording {recording.filename}:\n{err}'
+            )
             return None
