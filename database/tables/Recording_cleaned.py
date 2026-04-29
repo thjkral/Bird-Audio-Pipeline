@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Date, Time, Integer
+from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP
 from database.tables.base import metadata
 
 Recording_cleaned = Table(
@@ -10,6 +10,7 @@ Recording_cleaned = Table(
     Column("rec_date", Date, nullable=False),
     Column("start_time", Time, nullable=False),
     Column("stop_time", Time, nullable=False),
+    Column('timestamp', TIMESTAMP, nullable=False),
     Column("duration", Integer, nullable=False),
     Column("file_path", String(255), nullable=False),
     Column("file_size", Integer, nullable=False),

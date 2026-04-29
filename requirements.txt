@@ -6,3 +6,6 @@ pandas
 #DATABASE
 sqlalchemy
 pymysql
+
+#VALIDATION
+ruptures

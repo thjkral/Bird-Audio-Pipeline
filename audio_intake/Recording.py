@@ -14,6 +14,7 @@ class Recording:
         self._parse_filename_to_metadata()
         self._get_audio_metadata()
         self.stop_time = self._calculate_stop_time()
+        self.timestamp = self._set_timestamp()
         self.rec_id = self._generate_hashed_id()
         self.file_hash = self._generate_file_hash()
 
@@ -50,6 +51,9 @@ class Recording:
         dt = datetime.combine(self.rec_date, self.start_time)
         stop_time = dt + timedelta(seconds=self.duration)
         return stop_time.time()
+
+    def _set_timestamp(self):
+        return f'{self.rec_date} {self.start_time}'
 
     def _generate_hashed_id(self):
         hashtext = f"{self.mic_id}_{self.rec_date}_{self.start_time}"

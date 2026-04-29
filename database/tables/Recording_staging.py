@@ -10,6 +10,7 @@ Recording_staging = Table(
     Column("rec_date", Date),
     Column("start_time", Time),
     Column("stop_time", Time),
+    Column('timestamp', TIMESTAMP),
     Column("duration", Integer),
     Column("file_path", String(255)),
     Column("file_size", Integer),
