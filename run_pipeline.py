@@ -73,6 +73,6 @@ if __name__ == '__main__':
             curr_batch_id += 1
         clean_audio.start_clean(db_engine.engine, curr_batch_id)
 
-    if args.validate_audio:
+    if args.validate_audio or args.all:
         logging.info('VALIDATING AUDIO')
-        validate_audio.validate(database_connection)
+        validate_audio.validate(db_engine.engine)

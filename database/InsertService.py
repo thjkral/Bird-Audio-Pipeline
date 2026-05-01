@@ -18,6 +18,7 @@ class InsertService():
             "rec_date": recording.rec_date,
             "start_time": recording.start_time,
             "stop_time": recording.stop_time,
+            "timestamp": recording.timestamp,
             "duration": recording.duration,
             "file_path": recording.new_file_path,
             "file_size": recording.filesize,
