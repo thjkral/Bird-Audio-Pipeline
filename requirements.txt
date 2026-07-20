@@ -9,3 +9,10 @@ pymysql
 
 #VALIDATION
 ruptures
+
+#DETECTION
+librosa
+tensorflow
+resampy
+birdnet
+birdnetlib

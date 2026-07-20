@@ -5,7 +5,7 @@ Observation = Table(
     "Observation",
     metadata,
     Column("id", Integer, primary_key=True, nullable=False),
-    Column("rec_id", String(64), ForeignKey("Recording.id"), nullable=False),
+    Column("rec_id", String(64), ForeignKey("Recording_cleaned.id"), nullable=False),
     Column("species_id", Integer, ForeignKey("Species.id"), nullable=False),
     Column("start_second", Integer, nullable=False),
     Column("stop_second", Integer, nullable=False),
