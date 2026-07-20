@@ -3,4 +3,4 @@ from .MaintenanceService import DatabaseMaintenance
 from .CleaningService import CleaningService
 from .InsertService import InsertService
 from .ValidationService import ValidationService
-from .DeterminationService import DeterminationService
+from .DetectionService import DetectionService

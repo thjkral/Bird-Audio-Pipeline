@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import select
 from database.tables import Recording_cleaned, Microphone
 
-class DeterminationService:
+class DetectionService:
     def __init__(self, engine):
         self.engine = engine
 
