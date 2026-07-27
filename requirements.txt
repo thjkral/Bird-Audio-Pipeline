@@ -15,4 +15,3 @@ librosa
 tensorflow
 resampy
 birdnet
-birdnetlib

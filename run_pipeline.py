@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from audio_intake import load_audio
 from clean_and_validate import clean_audio, validate_audio
+from acoustics import birdnet_dections
 from database import Engine, DatabaseMaintenance
 
 def _get_db_credentials_dict():
@@ -44,6 +45,7 @@ if __name__ == '__main__':
     arguments.add_argument('-d', '--date', action='store', help='Date to load from. Keep empty to load all')
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
     arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
+    arguments.add_argument('-x', '--acoustics', action='store_true', help='Detect bird song')
 
     args = arguments.parse_args()
 
@@ -51,7 +53,8 @@ if __name__ == '__main__':
                  f'\t\tStarted at= {datetime.now()}\n'
                  f'\t\tLoading audio= {args.load_audio}\n'
                  f'\t\tCleaning audio= {args.clean_audio}\n'
-                 f'\t\tValidating audio= {args.validate_audio}')
+                 f'\t\tValidating audio= {args.validate_audio}\n'
+                 f'\t\tAcoustics= {args.acoustics}')
 
     db_credentials = _get_db_credentials_dict()
 
@@ -73,6 +76,9 @@ if __name__ == '__main__':
             curr_batch_id += 1
         clean_audio.start_clean(db_engine.engine, curr_batch_id)
 
-    if args.validate_audio or args.all:
-        logging.info('VALIDATING AUDIO')
-        validate_audio.validate(db_engine.engine)
+    #TODO: add validation steps here
+
+    if args.acoustics or args.all:
+        logging.info('ACOUSTICS')
+        birdnet_dections.start_acoustics_detection(db_engine.engine)
+

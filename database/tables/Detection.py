@@ -1,0 +1,17 @@
+from sqlalchemy import Table, Column, Integer, String, TIMESTAMP, ForeignKey, Double, Enum, text, Float
+from database.tables.base import metadata
+
+Detection = Table(
+    'Detection',
+    metadata,
+    Column('detection_id', String(64), primary_key=True, nullable=False),
+    Column('recording_id', String(64), ForeignKey('Recording_cleaned.id'), nullable=False),
+    Column('birdnet_id', String(10), ForeignKey('BirdSpecies.birdnet_id'), nullable=False),
+    Column("window_start_s", Double, nullable=False),
+    Column("window_stop_s", Double, nullable=False),
+    Column("confidence_score", Double, nullable=False),
+    Column('overlap_s', Float, nullable=False),
+    Column('geo_confidence_score', Double, nullable=False),
+    Column('model_version', Float, nullable=False),
+    Column("created_at", TIMESTAMP, server_default=text("CURRENT_TIMESTAMP()")),
+)

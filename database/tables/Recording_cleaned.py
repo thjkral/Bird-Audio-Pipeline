@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP
+from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, Computed
 from database.tables.base import metadata
 
 Recording_cleaned = Table(
@@ -17,5 +17,6 @@ Recording_cleaned = Table(
     Column("samplerate", Integer, nullable=False),
     Column("channels", Integer, nullable=False),
     Column("bitdepth", Integer, nullable=False),
+    Column("week_number", Integer, Computed("WEEK(rec_date, 3)", persisted=True)),
     Column("file_hash", String(64), unique=True, nullable=False),
 )
