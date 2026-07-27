@@ -1,0 +1,31 @@
+from sqlalchemy import Column, String, Table
+from database.tables.base import metadata
+
+BirdSpecies = Table(
+    "BirdSpecies",
+    metadata,
+    Column("birdnet_id", String(10), primary_key=True, unique=True),
+    Column("scientific_name", String(200), unique=True),
+    Column("scientific_name_aliases", String(600), unique=False),
+    Column("common_name", String(200)),
+    Column("common_name_alt", String(200)),
+    Column("taxon_group", String(15), nullable=False),
+    Column("record_type", String(15), nullable=False),
+    Column("inat_id", String(30)),
+    Column("ebird_code", String(30)),
+    Column("gbif_id", String(15)),
+    Column("ncbi_id", String(50)),
+    Column("avibase_id", String(60)),
+    Column("birdlife_id", String(200)),
+    Column("ml_taxon_code", String(30)),
+    Column("xc_name", String(200)),
+    Column("observationorg_id", String(20)),
+    Column("wikidata_qid", String(50)),
+    Column("description_source", String(200)),
+    Column("image_url", String(600)),
+    Column("image_author", String(2000)),
+    Column("image_license", String(50)),
+    Column("image_source", String(200)),
+    Column("common_name_en", String(200)),
+    Column("common_name_nl", String(200)),
+)
