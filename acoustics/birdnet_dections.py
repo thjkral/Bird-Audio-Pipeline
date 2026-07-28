@@ -7,8 +7,12 @@ from database.DetectionService import DetectionService
 from .GeoPrediction import GeoPrediction
 
 
-def get_species_id():
-    pass
+def birdnet_week(dt):
+    """
+    Convert a datetime into BirdNET's 48-week numbering.
+    """
+    week_in_month = min((dt.day - 1) // 7 + 1, 4)
+    return (dt.month - 1) * 4 + week_in_month
 
 def start_acoustics_detection(db_engine):
 
@@ -28,17 +32,23 @@ def start_acoustics_detection(db_engine):
     start_time = datetime.now()
     no_of_detections = 0
 
+    recordings["week_number"] = recordings.apply(
+        lambda row: birdnet_week(row["timestamp"]),
+        axis=1,
+    )
+
     week_numbers = recordings["week_number"].unique().tolist()
-    mic_ids = recordings["id"].unique().tolist()
     for week_number in week_numbers:
+        mic_ids = recordings.loc[
+            recordings["week_number"] == week_number, "mic_id"
+        ].unique().tolist()
         for mic_id in mic_ids:
             logging.info(f'Retrieving recordings for week_number {week_number} and mic_id {mic_id}')
             recordings_subset = recordings[(recordings["week_number"] == week_number)
-                                           & (recordings["id"] == mic_id)].copy()
+                                           & (recordings["mic_id"] == mic_id)].copy()
 
             mic_location = detection_service.get_microphone_location(mic_id)
 
-            logging.info(f'Making geo predictions for mic_id {mic_id} and week_number {week_number}')
             geo_predictor = GeoPrediction(geo_model,
                                           mic_location.get('latitude'),
                                           mic_location.get('longitude'),
@@ -72,16 +82,16 @@ def start_acoustics_detection(db_engine):
                     recording_index += 1
                     detection_service.insert_detections(predictions_df)
 
-        # Calulate the total run time in the prefered format
-        stop_time = datetime.now()
-        running_time = stop_time - start_time
-        total_minutes = int(running_time.total_seconds() // 60)
-        hours, minutes = divmod(total_minutes, 60)
+    # Calulate the total run time in the prefered format
+    stop_time = datetime.now()
+    running_time = stop_time - start_time
+    total_minutes = int(running_time.total_seconds() // 60)
+    hours, minutes = divmod(total_minutes, 60)
 
-        #Print and log a short summary
-        logging.info(
-            f'Detection run completed: \n'
-            f'Runtime: {hours} hours {minutes} minutes. \n'
-            f'Files: {no_of_recordings} recordings\n'
-            f'Total detections: {no_of_detections} detections'
-        )
+    #Print and log a short summary
+    logging.info(
+        f'Detection run completed: \n'
+        f'Runtime: {hours} hours {minutes} minutes. \n'
+        f'Files: {no_of_recordings} recordings\n'
+        f'Total detections: {no_of_detections} detections'
+    )
