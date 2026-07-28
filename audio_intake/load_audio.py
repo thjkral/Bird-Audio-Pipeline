@@ -9,6 +9,22 @@ from .Recording import Recording
 from database import InsertService
 
 
+def _get_wav_files(root_dir):
+    """Return Recording objects for all .wav files under ``root_dir``."""
+    logging.info(f'Looking for .wav files in {root_dir}.')
+    recordings_list = []
+    for current_dir, _, files in os.walk(root_dir):
+        for file in files:
+            filename = os.fsdecode(file)
+            if filename.endswith('.wav'):
+                full_path = os.path.join(current_dir, filename)
+                recording = Recording(full_path, filename)
+                recordings_list.append(recording)
+
+    logging.info(f'Found {len(recordings_list)} .wav files')
+    return recordings_list
+
+
 def _copy_recording_file(recording):
     try:
         pass
@@ -25,21 +41,24 @@ def start_load(root_dir, db_engine, batch_id):
     inserter = InsertService(db_engine)
 
     logging.info(f'Looking for data at location: {root_dir}.')
+
+    wav_files = _get_wav_files(root_dir)
+    '''
     recordings_list = []
     for file in os.listdir(root_dir):  # generate Recording objects for each audiofile
         filename = os.fsdecode(file)
         if filename.endswith('.wav'):
             full_path = os.path.join(root_dir, filename)
             recording = Recording(full_path, filename)
-            recordings_list.append(recording)
+            recordings_list.append(recording)'''
 
-    new_file_count = len(recordings_list)
+    new_file_count = len(wav_files)
     logging.info(f'Identified {new_file_count} new audio files to process. Starting load sequence with batch ID {batch_id}...')
 
     successful_inserts = 0
     errors = 0
 
-    for rec in recordings_list:  # copy each record to a new location with a directory tree based on the recording date
+    for rec in wav_files:  # copy each record to a new location with a directory tree based on the recording date
         rec.set_new_filepath(os.getenv('STORE_LOCATION'))
         try:
             os.makedirs(os.path.dirname(rec.new_file_path), exist_ok=True)
@@ -60,4 +79,3 @@ def start_load(root_dir, db_engine, batch_id):
     logging.info(f'Finished loading to staging.\n'
                  f'\t{successful_inserts}/{new_file_count}: Successfull\n'
                  f'\t{errors}/{new_file_count}: Failed')
-

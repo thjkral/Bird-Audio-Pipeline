@@ -37,10 +37,15 @@ class Recording:
         The filename of each recording contains the name of the microphone, the time when the recording was started, and
         the date. This function parses the filename and assigns them to metadata fields.
         """
-        filename_extention_removed = self.filename.replace('.wav', '')
-        file_metadata = filename_extention_removed.split('_')
+        filename_extension_removed = self.filename.replace('.wav', '')
+        file_metadata = filename_extension_removed.split('_')
 
-        self.mic_id = file_metadata[0]
+        microphone_name = file_metadata[0]
+        if microphone_name.isdigit():
+            self.mic_id = 'Song' + microphone_name
+        else:
+            self.mic_id = microphone_name
+
         self.rec_date = datetime.strptime(file_metadata[1], '%Y%m%d').date()
         self.start_time = datetime.strptime(file_metadata[2], '%H%M%S').time()
 
@@ -88,5 +93,5 @@ class Recording:
                f'size (bytes)= {self.filesize}\n' \
                f'samplerate= {self.samplerate}\n' \
                f'channels= {self.channels}\n' \
-               f'bitdepth= {self.bitdepth}' \
-               f'filehash= {self.file_hash}'
+               f'bitdepth= {self.bitdepth}\n' \
+               f'filehash= {self.file_hash}\n\n'

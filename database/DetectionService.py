@@ -13,8 +13,7 @@ class DetectionService:
                    Recording_cleaned.c.timestamp,
                    Recording_cleaned.c.rec_date,
                    Recording_cleaned.c.file_path,
-                   Recording_cleaned.c.week_number,
-                   Microphone.c.id,
+                   Microphone.c.id.label('mic_id'),
                    Microphone.c.longitude,
                    Microphone.c.latitude
                    )
