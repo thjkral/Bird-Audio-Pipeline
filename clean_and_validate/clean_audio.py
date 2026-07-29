@@ -15,8 +15,32 @@ def _check_null_values(dataframe, db, field_list=None):
 
     return df_clean
 
+def _check_recording_duration(dataframe, db_conn):
+    """
+    Check if the duration length is within range
+    :param dataframe: dataframe of recordings
+    :param db_conn: connection to database
+    :return: cleaned dataframe
+    """
+    min_duration = 60
+    max_duration = 600
+
+    valid_mask = dataframe["duration"].between(min_duration, max_duration)
+
+    clean_df = dataframe[valid_mask].copy()
+    outside_range_df = dataframe[~valid_mask].copy()
+
+    _append_to_log_table(outside_range_df, "outside_range", db_conn)
+    return clean_df
+
 
 def _check_duplicates_batch(dataframe, db_conn):
+    """
+    Check if duplicates are present in the same dataframe. This indicates duplicate files within the same batch.
+    :param dataframe: dataframe of recordings
+    :param db_conn: connection to database
+    :return: cleaned dataframe
+    """
     dataframe['is_duplicate'] = dataframe.duplicated(keep='first')
 
     clean_df = dataframe[~dataframe['is_duplicate']].copy()
@@ -27,6 +51,13 @@ def _check_duplicates_batch(dataframe, db_conn):
 
 
 def _check_duplicates_historical(dataframe, db_conn):
+    """
+    Check if the dataframe contains recording already in the dataset. This indicates a recording loaded into the data
+    with an earlier run.
+    :param dataframe: dataframe of recordings
+    :param db_conn: connection to database
+    :return: cleaned dataframe
+    """
     unique_file_hashes = db_conn.get_unique_historic_hashes()
     if not unique_file_hashes.empty:
         existing_set = set(unique_file_hashes["file_hash"])
@@ -44,7 +75,12 @@ def _check_duplicates_historical(dataframe, db_conn):
 
 
 def _append_to_log_table(dataframe, reject_type, db_conn):
-
+    """
+    Append rejected recordings to the log table with the reason for rejection
+    :param dataframe: dataframe with rejected recordings
+    :param reject_type: reason for rejecting the recordings
+    :param db_conn: connection to database
+    """
     if reject_type == 'null':
         dataframe['is_null'] = True
         db_conn.insert_rejected_recordings(dataframe)
@@ -56,9 +92,16 @@ def _append_to_log_table(dataframe, reject_type, db_conn):
         dataframe["is_duplicate"] = True
         dataframe["duplicate_type"] = 'historical'
         db_conn.insert_rejected_recordings(dataframe)
+    if reject_type == 'outside_range':
+        dataframe["outside_range"] = True
+        db_conn.insert_rejected_recordings(dataframe)
 
 
 def start_clean(db_engine, batch_id):
+    """
+    Clean the staged recordings by running various checks. Accepted recordings are stored in the `Recording_cleaned`
+    table, while rejected recordings are stored in the `Recording_rejected` table.
+    """
     logging.info(f'Cleaning data with batch ID: {batch_id}')
 
     clean_service = CleaningService(db_engine)
@@ -76,10 +119,15 @@ def start_clean(db_engine, batch_id):
         nulls_in_batch = len(no_nulls_df)
         logging.info(f'Number of null values in batch: {rows_in_batch - nulls_in_batch}')
 
+        # Identify recording with a duration length out of range
+        outside_range_df = _check_recording_duration(batch_df, clean_service)
+        outside_range_in_batch = len(outside_range_df)
+        logging.info(f'Number of recordings with out of range duration: {nulls_in_batch - outside_range_in_batch}')
+
         # Identify duplicate rows within the batch
-        no_batch_dups_df = _check_duplicates_batch(no_nulls_df, clean_service)
+        no_batch_dups_df = _check_duplicates_batch(outside_range_df, clean_service)
         dups_in_batch = len(no_batch_dups_df)
-        logging.info(f'Number of duplicates in batch: {nulls_in_batch - dups_in_batch}')
+        logging.info(f'Number of duplicates in batch: {outside_range_in_batch - dups_in_batch}')
 
         # Identify duplicate rows within the historic data
         no_historic_dups_df = _check_duplicates_historical(no_batch_dups_df, clean_service)
