@@ -22,5 +22,6 @@ Recording_rejected = Table(
     Column("is_duplicate", Boolean, server_default=text("0")),
     Column("duplicate_type", Enum("batch", "historical", name="duplicate_type")),
     Column("is_null", Boolean, server_default=text("0")),
+    Column("outside_range", Boolean, server_default=text("0")),
     Column("rejected_at", TIMESTAMP, server_default=text("CURRENT_TIMESTAMP()")),
 )
