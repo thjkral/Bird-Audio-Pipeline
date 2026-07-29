@@ -75,6 +75,7 @@ def start_acoustics_detection(db_engine):
                     predictions_df = acoustic_predictor.transform_dataframe(
                         recording['file_id'],
                         geo_predictor,
+                        week_number
                     )
                     no_of_detections += len(predictions_df)
 

@@ -12,6 +12,7 @@ Detection = Table(
     Column("confidence_score", Double, nullable=False),
     Column('overlap_s', Float, nullable=False),
     Column('geo_confidence_score', Double, nullable=False),
+    Column('birdnet_week_number', Integer, nullable=False),
     Column('model_version', Float, nullable=False),
     Column("created_at", TIMESTAMP, server_default=text("CURRENT_TIMESTAMP()")),
 )
