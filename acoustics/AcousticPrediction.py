@@ -53,7 +53,7 @@ class AcousticPrediction:
         )
         return hashlib.md5(hashtext.encode("utf-8")).hexdigest()
 
-    def transform_dataframe(self, recording_id, geo_predictor):
+    def transform_dataframe(self, recording_id, geo_predictor, birdnet_week):
         """Return predictions shaped for the Detection table.
 
         This method only transforms data. Persisting the returned DataFrame is
@@ -73,6 +73,7 @@ class AcousticPrediction:
         dataframe["recording_id"] = recording_id
         dataframe["model_version"] = self.model_version
         dataframe["overlap_s"] = self.overlap_s
+        dataframe["birdnet_week_number"] = birdnet_week
         dataframe["detection_id"] = dataframe.apply(
             self._generate_hashed_id,
             axis=1,
