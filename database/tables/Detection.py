@@ -2,11 +2,11 @@ from sqlalchemy import Table, Column, Integer, String, TIMESTAMP, ForeignKey, Do
 from database.tables.base import metadata
 
 Detection = Table(
-    'Detection',
+    'audio_Detection',
     metadata,
     Column('detection_id', String(64), primary_key=True, nullable=False),
-    Column('recording_id', String(64), ForeignKey('Recording_cleaned.id'), nullable=False),
-    Column('birdnet_id', String(10), ForeignKey('BirdSpecies.birdnet_id'), nullable=False),
+    Column('recording_id', String(64), ForeignKey('audio_Recording_cleaned.id'), nullable=False),
+    Column('birdnet_id', String(10), ForeignKey('core_BirdSpecies.birdnet_id'), nullable=False),
     Column("window_start_s", Double, nullable=False),
     Column("window_stop_s", Double, nullable=False),
     Column("confidence_score", Double, nullable=False),

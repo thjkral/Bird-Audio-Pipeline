@@ -10,7 +10,7 @@ import os
 
 from datetime import datetime
 from audio_intake import load_audio
-from clean_and_validate import clean_audio, validate_audio
+from clean_and_validate import clean_audio
 from acoustics import birdnet_dections
 from database import Engine, DatabaseMaintenance
 
