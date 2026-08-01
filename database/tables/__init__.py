@@ -5,6 +5,3 @@ from .Recording_rejected import Recording_rejected
 from .BirdSpecies import BirdSpecies
 from .GeoConfidenceFlag import GeoConfidenceFlag
 from .Detection import Detection
-#from .Observation import Observation
-#from .Regime import Regime
-#from .CPD_processing_state import CPD_processing_state

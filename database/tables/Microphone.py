@@ -2,7 +2,7 @@ from sqlalchemy import Table, Column, String, Numeric
 from database.tables.base import metadata
 
 Microphone = Table(
-    "Microphone",
+    "audio_Microphone",
     metadata,
     Column("id", String(10), primary_key=True, nullable=False),
     Column("longitude", Numeric(9, 6)),

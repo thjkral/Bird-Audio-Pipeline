@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Table
 from database.tables.base import metadata
 
 BirdSpecies = Table(
-    "BirdSpecies",
+    "core_BirdSpecies",
     metadata,
     Column("birdnet_id", String(10), primary_key=True, unique=True),
     Column("scientific_name", String(200), unique=True),

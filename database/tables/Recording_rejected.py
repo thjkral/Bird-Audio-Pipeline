@@ -2,7 +2,7 @@ from sqlalchemy import Table, Column, String, Date, Time, Integer, Boolean, Enum
 from database.tables.base import metadata
 
 Recording_rejected = Table(
-    "Recording_rejected",
+    "audio_Recording_rejected",
     metadata,
     Column("id", String(64)),
     Column("file_name", String(255)),

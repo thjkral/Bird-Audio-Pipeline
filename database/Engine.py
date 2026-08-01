@@ -42,7 +42,7 @@ class Engine:
         """
         batch_id_query = text("""
             SELECT DISTINCT batch_id
-            FROM Recording_staging
+            FROM audio_Recording_staging
             ORDER BY batch_id DESC
             LIMIT 1
         """)

@@ -2,7 +2,7 @@ from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, Co
 from database.tables.base import metadata
 
 Recording_cleaned = Table(
-    "Recording_cleaned",
+    "audio_Recording_cleaned",
     metadata,
     Column("id", String(64), primary_key=True, nullable=False),
     Column("file_name", String(255)),
