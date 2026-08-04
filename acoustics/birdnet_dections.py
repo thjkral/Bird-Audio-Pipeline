@@ -1,3 +1,4 @@
+import gc
 import logging
 import birdnet
 
@@ -82,6 +83,15 @@ def start_acoustics_detection(db_engine):
                     print(f'Analyzed {recording_index} of {no_of_recordings} recordings', flush=True)
                     recording_index += 1
                     detection_service.insert_detections(predictions_df)
+
+                    #Clean-up of acoustic prediction
+                    del acoustic_predictor
+
+            #Clean-up of geo predictor
+            del geo_predictor
+            #Force garbage collector
+            gc.collect()
+
 
     # Calulate the total run time in the prefered format
     stop_time = datetime.now()
