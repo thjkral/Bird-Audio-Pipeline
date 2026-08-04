@@ -12,6 +12,7 @@ from datetime import datetime
 from audio_intake import load_audio
 from clean_and_validate import clean_audio
 from acoustics import birdnet_dections
+from reports import make_reports
 from database import Engine, DatabaseMaintenance
 
 def _get_db_credentials_dict():
@@ -46,6 +47,7 @@ if __name__ == '__main__':
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
     arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
     arguments.add_argument('-x', '--acoustics', action='store_true', help='Detect bird song')
+    arguments.add_argument('-r', '--reports', action='store_true', help='Create report tables. Current reports will be overwritten')
 
     args = arguments.parse_args()
 
@@ -81,4 +83,11 @@ if __name__ == '__main__':
     if args.acoustics or args.all:
         logging.info('ACOUSTICS')
         birdnet_dections.start_acoustics_detection(db_engine.engine)
+
+    if args.reports or args.all:
+        logging.info('REPORTING')
+        make_reports.generate_reports(db_engine.engine)
+
+
+
 
