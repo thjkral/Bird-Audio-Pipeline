@@ -7,13 +7,16 @@ import dotenv
 import logging
 import sys
 import os
+import subprocess
 
 from datetime import datetime
 from audio_intake import load_audio
 from clean_and_validate import clean_audio
-from acoustics import birdnet_dections
 from reports import make_reports
 from database import Engine, DatabaseMaintenance
+
+
+BIRDNET_BATCH_SIZE = 250
 
 def _get_db_credentials_dict():
     db_credentials_dict = {'user': os.getenv('DATABASE_USER'),
@@ -47,9 +50,17 @@ if __name__ == '__main__':
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
     arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
     arguments.add_argument('-x', '--acoustics', action='store_true', help='Detect bird song')
+    arguments.add_argument(
+        '--birdnet-batch-size',
+        type=int,
+        default=BIRDNET_BATCH_SIZE,
+        help='Number of recordings processed by each isolated BirdNET worker',
+    )
     arguments.add_argument('-r', '--reports', action='store_true', help='Create report tables. Current reports will be overwritten')
 
     args = arguments.parse_args()
+    if args.birdnet_batch_size <= 0:
+        arguments.error('--birdnet-batch-size must be greater than zero')
 
     logging.info(f'PIPELINE STARTED\n'
                  f'\t\tStarted at= {datetime.now()}\n'
@@ -82,12 +93,43 @@ if __name__ == '__main__':
 
     if args.acoustics or args.all:
         logging.info('ACOUSTICS')
-        birdnet_dections.start_acoustics_detection(db_engine.engine)
+        while True:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "acoustics.birdnet_worker",
+                    "--batch-size", str(args.birdnet_batch_size),
+                ],
+                check=False,
+            )
+
+            if result.returncode == 0:
+                logging.info('BirdNET worker completed a batch; starting the next worker.')
+                continue
+            if result.returncode == 1:
+                logging.info('BirdNET detection is complete; no recordings remain.')
+                break
+            if result.returncode == 2:
+                logging.warning(
+                    'BirdNET worker reached its file descriptor limit; starting a fresh worker.'
+                )
+                continue
+            if result.returncode == 3:
+                logging.critical('BirdNET worker stopped due to a database error.')
+                raise RuntimeError('BirdNET detection stopped due to a database error')
+            if result.returncode == 4:
+                logging.error('BirdNET worker stopped due to an unexpected error.')
+                raise RuntimeError('BirdNET detection stopped due to an unexpected error')
+
+            logging.error('BirdNET worker exited with unknown code %s.', result.returncode)
+            raise RuntimeError(
+                f'BirdNET detection stopped with unknown worker exit code {result.returncode}'
+            )
+
 
     if args.reports or args.all:
         logging.info('REPORTING')
         make_reports.generate_reports(db_engine.engine)
-
-
 
 

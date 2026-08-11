@@ -5,3 +5,4 @@ from .Recording_rejected import Recording_rejected
 from .BirdSpecies import BirdSpecies
 from .GeoConfidenceFlag import GeoConfidenceFlag
 from .Detection import Detection
+from .DetectionProcessedRecordings import DetectionProcessedRecordings
