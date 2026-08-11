@@ -28,7 +28,11 @@ class Engine:
         """
         try:
             connection_string = f"mysql+pymysql://{self.user}:{self.password}@localhost/{self.database}?charset=utf8mb4"
-            engine = create_engine(connection_string, future=True)
+            engine = create_engine(connection_string,
+                                   future=True,
+                                   pool_pre_ping=True,
+                                   pool_recycle=3600,
+                                   )
             logging.info(f'Engine created successfully')
             return engine
         except Exception as err:
