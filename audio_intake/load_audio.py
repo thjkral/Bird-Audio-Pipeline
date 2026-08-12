@@ -9,27 +9,63 @@ from .Recording import Recording
 from database import InsertService
 
 
-def _get_wav_files(root_dir):
-    """Return Recording objects for all .wav files under ``root_dir``."""
-    logging.info(f'Looking for .wav files in {root_dir}.')
+def _get_wav_files(root_dir, batch_size=100, skipped_paths=None):
+    """Return a batch of .wav file paths under ``root_dir``.
+
+    Paths in ``skipped_paths`` are ignored for the duration of a load run.
+    This lets failed files remain at their source without being retried forever
+    by the batch loop.
+    """
+    logging.info(f'Getting a new batch of recordings')
+    if skipped_paths is None:
+        skipped_paths = set()
+
     recordings_list = []
     for current_dir, _, files in os.walk(root_dir):
         for file in files:
             filename = os.fsdecode(file)
             if filename.endswith('.wav'):
                 full_path = os.path.join(current_dir, filename)
-                recording = Recording(full_path, filename)
-                recordings_list.append(recording)
+                if full_path in skipped_paths:
+                    continue
 
-    logging.info(f'Found {len(recordings_list)} .wav files')
+                recordings_list.append(full_path)
+                if len(recordings_list) == batch_size:
+                    logging.info(
+                        f'{len(recordings_list)} files in batch. '
+                        'Preparing to move them to new location and database.'
+                    )
+                    return recordings_list
+
+    # The scan is exhausted before a full batch was collected.  Return this
+    # final partial batch so that the remaining recordings are processed.
+    logging.info(f'{len(recordings_list)} files in batch. Preparing to move them to new location and database.')
     return recordings_list
 
 
-def _copy_recording_file(recording):
+def _move_recording_file(recording):
+    """Move a recording from its intake path to its storage path."""
     try:
-        pass
+        os.makedirs(os.path.dirname(recording.new_file_path), exist_ok=True)
+        shutil.move(recording.old_file_path, recording.new_file_path)
     except Exception as err:
-        logging.error(f'Problem while copying file {recording.old_file_path} to {recording.new_file_path}:\n{err}')
+        logging.error(f'Problem while moving file {recording.old_file_path} to {recording.new_file_path}:\n{err}')
+
+
+def _remove_empty_directories(root_dir):
+    """Remove empty directories below ``root_dir``, keeping the root intact."""
+    logging.info('Removing empty directories')
+    for current_dir, _, _ in os.walk(root_dir, topdown=False):
+        if current_dir == root_dir:
+            continue
+
+        try:
+            os.rmdir(current_dir)
+            logging.info('Removed empty directory: %s', current_dir)
+        except OSError:
+            # A directory containing files (or one changed by another process)
+            # is intentionally left in place.
+            continue
 
 
 def start_load(root_dir, db_engine, batch_id):
@@ -42,40 +78,59 @@ def start_load(root_dir, db_engine, batch_id):
 
     logging.info(f'Looking for data at location: {root_dir}.')
 
-    wav_files = _get_wav_files(root_dir)
-    '''
-    recordings_list = []
-    for file in os.listdir(root_dir):  # generate Recording objects for each audiofile
-        filename = os.fsdecode(file)
-        if filename.endswith('.wav'):
-            full_path = os.path.join(root_dir, filename)
-            recording = Recording(full_path, filename)
-            recordings_list.append(recording)'''
+    skipped_paths = set()
+    while True:
+        wav_files = _get_wav_files(root_dir, skipped_paths=skipped_paths)
+        if wav_files is None or len(wav_files) == 0:
+            logging.info(f'There are no processable .wav files left in {root_dir}. Audio intake completed!')
+            break
+        else:
+            for file_path in wav_files:
+                filename = os.path.basename(file_path)
+                try:
+                    rec = Recording(file_path, filename)
+                except Exception as err:
+                    skipped_paths.add(file_path)
+                    logging.warning(
+                        'Skipping recording %s because it could not be initialized: %s',
+                        file_path,
+                        err,
+                    )
+                    continue
 
-    new_file_count = len(wav_files)
-    logging.info(f'Identified {new_file_count} new audio files to process. Starting load sequence with batch ID {batch_id}...')
+                try:
+                    rec.set_new_filepath(os.getenv('STORE_LOCATION'))
+                except Exception as err:
+                    skipped_paths.add(rec.old_file_path)
+                    logging.warning(
+                        'Skipping recording %s because it could not be prepared for loading: %s',
+                        rec.old_file_path,
+                        err,
+                    )
+                    continue
 
-    successful_inserts = 0
-    errors = 0
+                try:
+                    result = inserter.insert_staging_recording(rec, batch_id)
+                except Exception as err:
+                    skipped_paths.add(rec.old_file_path)
+                    logging.warning(
+                        'Skipping recording %s because its data could not be written to the database: %s',
+                        rec.old_file_path,
+                        err,
+                    )
+                    continue
 
-    for rec in wav_files:  # copy each record to a new location with a directory tree based on the recording date
-        rec.set_new_filepath(os.getenv('STORE_LOCATION'))
-        try:
-            os.makedirs(os.path.dirname(rec.new_file_path), exist_ok=True)
-            shutil.copyfile(rec.old_file_path, rec.new_file_path)
-            logging.info(f'Copied audio file {rec.filename} to new location')
+                if result != 'Success':
+                    skipped_paths.add(rec.old_file_path)
+                    logging.warning(
+                        'Skipping recording %s because its data could not be written to the database.',
+                        rec.old_file_path,
+                    )
+                    continue
 
-            logging.info(f'Adding recording {rec.filename} to database')
-            result = inserter.insert_staging_recording(rec, batch_id)
+                _move_recording_file(rec)
+                logging.info(f'Processed recording: {rec.filename}')
 
-            if result == 'Succes':
-                successful_inserts += 1
-            elif result is None:
-                errors += 1
+            logging.info(f'Loaded {len(wav_files)} .wav files. Moving on to next batch')
 
-        except Exception as err:
-            logging.error(f'Problem while copying file {rec.old_file_path} to {rec.new_file_path}:\n{err}')
-
-    logging.info(f'Finished loading to staging.\n'
-                 f'\t{successful_inserts}/{new_file_count}: Successfull\n'
-                 f'\t{errors}/{new_file_count}: Failed')
+    _remove_empty_directories(root_dir)
