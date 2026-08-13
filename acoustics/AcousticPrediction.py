@@ -10,18 +10,15 @@ class AcousticPrediction:
         model,
         file_path,
         custom_species_list,
-        workers,
-        batch_size,
-        overlap_s,
-        model_version,
+        config
     ):
         self.model = model
         self.file_path = file_path
         self.custom_species_list = custom_species_list
-        self.workers = workers
-        self.batch_size = batch_size
-        self.overlap_s = overlap_s
-        self.model_version = model_version
+        self.workers = config.workers
+        self.batch_size = config.batch_size
+        self.overlap_s = config.overlap_s
+        self.model_version = config.model_version
         self.detection_df = None
 
     def predict(self):

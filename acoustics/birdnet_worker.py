@@ -1,4 +1,3 @@
-import argparse
 import errno
 import logging
 import os
@@ -13,12 +12,9 @@ from .AcousticPrediction import AcousticPrediction
 from database.DetectionService import DetectionService
 from database.Engine import Engine
 from .GeoPrediction import GeoPrediction
+from utils.Config import (DatabaseConfig, BirdnetConfig, GeoConfig)
 
-
-DEFAULT_BATCH_SIZE = 250
-MODEL_VERSION = 2.4
 FD_SAFETY_FRACTION = 0.80
-
 EXIT_BATCH_COMPLETED = 0
 EXIT_NO_RECORDINGS_REMAIN = 1
 EXIT_FD_LIMIT_REACHED = 2
@@ -32,14 +28,6 @@ def birdnet_week(dt):
     """
     week_in_month = min((dt.day - 1) // 7 + 1, 4)
     return (dt.month - 1) * 4 + week_in_month
-
-
-def _get_db_credentials_dict():
-    return {
-        'user': os.getenv('DATABASE_USER'),
-        'password': os.getenv('DATABASE_PASSWORD'),
-        'database': os.getenv('DATABASE_NAME'),
-    }
 
 
 def _configure_logging():
@@ -88,7 +76,7 @@ def _fd_limit_reached():
     return fd_count >= threshold
 
 
-def run(batch_size):
+def run(database_config, acoustic_config, geo_config, batch_size):
     logging.info('Starting BirdNET worker; batch size: %s', batch_size)
 
     fd_count, threshold, soft_limit = _fd_usage_and_threshold()
@@ -102,7 +90,7 @@ def run(batch_size):
             threshold,
         )
 
-    db_engine = Engine(_get_db_credentials_dict())
+    db_engine = Engine(database_config)
     detection_service = DetectionService(db_engine.engine)
 
     recordings = detection_service.get_unprocessed_recordings(batch_size)
@@ -115,8 +103,8 @@ def run(batch_size):
     logging.info('Setting up the birdnet models')
     import birdnet
 
-    geo_model = birdnet.load("geo", "2.4", "tf", lang='nl')
-    model = birdnet.load("acoustic", "2.4", "tf", lang='nl')
+    geo_model = birdnet.load("geo", geo_config.model_version, "tf", lang='nl')
+    model = birdnet.load("acoustic", acoustic_config.model_version, "tf", lang='nl')
 
     recordings['week_number'] = recordings.apply(
         lambda row: birdnet_week(row['timestamp']),
@@ -145,7 +133,7 @@ def run(batch_size):
                 mic_location.get('latitude'),
                 mic_location.get('longitude'),
                 week_number,
-                0.01,
+                geo_config.min_confidence,
                 detection_service,
             )
             geo_predictor.predict()
@@ -167,13 +155,10 @@ def run(batch_size):
                     len(recordings),
                 )
                 acoustic_predictor = AcousticPrediction(
-                    model,
-                    recording['file_path'],
+                    model=model,
+                    file_path=recording['file_path'],
                     custom_species_list=geo_predictor.get_prediction_as_set(),
-                    workers=8,
-                    batch_size=16,
-                    overlap_s=1.5,
-                    model_version=MODEL_VERSION,
+                    config=acoustic_config
                 )
                 acoustic_predictor.predict()
 
@@ -204,18 +189,33 @@ def run(batch_size):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process one isolated BirdNET batch.')
-    parser.add_argument('--batch-size', type=int, default=DEFAULT_BATCH_SIZE)
-    args = parser.parse_args()
-
-    if args.batch_size <= 0:
-        parser.error('--batch-size must be greater than zero')
-
+    # load configs
     dotenv.load_dotenv('/etc/bird_audio_pipeline.conf')
+    database_config = DatabaseConfig(
+        os.getenv('DATABASE_USER'),
+        os.getenv('DATABASE_PASSWORD'),
+        os.getenv('DATABASE_NAME'),
+        os.getenv('DATABASE_HOST'),
+        os.getenv('DATABASE_PORT')
+    )
+    birdnet_acoustic_config = BirdnetConfig(
+        os.getenv('BIRDNET_WORKERS'),
+        os.getenv('BIRDNET_BATCH_SIZE'),
+        os.getenv('BIRDNET_OVERLAP'),
+        os.getenv('BIRDNET_MODEL_VERSION')
+    )
+    birdnet_geo_config = GeoConfig(
+        os.getenv('GEO_MODEL_VERSION'),
+        os.getenv('GEO_MIN_CONFIDENCE')
+    )
+    batch_size = int(os.getenv('WORKER_BATCH_SIZE'))
+
+    if batch_size <= 0:
+        parser.error('--batch-size must be greater than zero')
 
     try:
         _configure_logging()
-        return run(args.batch_size)
+        return run(database_config, birdnet_acoustic_config, birdnet_geo_config, batch_size)
     except OSError as err:
         if err.errno == errno.EMFILE:
             logging.warning('BirdNET worker ran out of file descriptors.', exc_info=True)
