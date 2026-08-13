@@ -2,7 +2,7 @@
 Connect to the database and perform tasks
 """
 import logging
-import pandas as pd
+from dataclasses import dataclass
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
@@ -13,10 +13,12 @@ class Engine:
     Connector to the database using SQLAlchemy sessions
     """
 
-    def __init__(self, db_credentials):
-        self.user = db_credentials.get('user')
-        self.password = db_credentials.get('password')
-        self.database = db_credentials.get('database')
+    def __init__(self, config):
+        self.user = config.user
+        self.password = config.password
+        self.database = config.database
+        self.host = config.host
+        self.port = config.port
         self.engine = self._generate_engine()
 
     def __str__(self):
@@ -27,7 +29,7 @@ class Engine:
         Create a SQLAlchemy engine.
         """
         try:
-            connection_string = f"mysql+pymysql://{self.user}:{self.password}@localhost/{self.database}?charset=utf8mb4"
+            connection_string = f"mysql+pymysql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}?charset=utf8mb4"
             engine = create_engine(connection_string,
                                    future=True,
                                    pool_pre_ping=True,

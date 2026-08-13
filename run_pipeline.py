@@ -10,11 +10,12 @@ import os
 import subprocess
 
 from datetime import datetime
+
+from utils.Config import (DatabaseConfig, LoadConfig)
 from audio_intake import load_audio
 from clean_and_validate import clean_audio
 from reports import make_reports
 from database import Engine, DatabaseMaintenance
-
 
 BIRDNET_BATCH_SIZE = 250
 
@@ -50,17 +51,8 @@ if __name__ == '__main__':
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
     arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
     arguments.add_argument('-x', '--acoustics', action='store_true', help='Detect bird song')
-    arguments.add_argument(
-        '--birdnet-batch-size',
-        type=int,
-        default=BIRDNET_BATCH_SIZE,
-        help='Number of recordings processed by each isolated BirdNET worker',
-    )
     arguments.add_argument('-r', '--reports', action='store_true', help='Create report tables. Current reports will be overwritten')
-
     args = arguments.parse_args()
-    if args.birdnet_batch_size <= 0:
-        arguments.error('--birdnet-batch-size must be greater than zero')
 
     logging.info(f'PIPELINE STARTED\n'
                  f'\t\tStarted at= {datetime.now()}\n'
@@ -71,7 +63,15 @@ if __name__ == '__main__':
 
     db_credentials = _get_db_credentials_dict()
 
-    db_engine = Engine(db_credentials)
+    database_config = DatabaseConfig(
+        os.getenv('DATABASE_USER'),
+        os.getenv('DATABASE_PASSWORD'),
+        os.getenv('DATABASE_NAME'),
+        os.getenv('DATABASE_HOST'),
+        os.getenv('DATABASE_PORT')
+    )
+
+    db_engine = Engine(database_config)
 
     database_maintenance = DatabaseMaintenance(db_engine.engine)
     database_maintenance.create_tables_if_not_exist()
@@ -81,7 +81,15 @@ if __name__ == '__main__':
 
     if args.load_audio or args.all:
         logging.info('Starting to load audio files')
-        load_audio.start_load(os.getenv('DATA_ROOT_LOCATION'), db_engine.engine, curr_batch_id+1)
+
+        load_config = LoadConfig(
+            os.getenv('DATA_ROOT_LOCATION'),
+            os.getenv('STORE_LOCATION'),
+            os.getenv('LOAD_BATCH_SIZE'),
+            curr_batch_id + 1
+        )
+
+        load_audio.start_load(load_config, db_engine.engine)
 
     if args.clean_audio or args.all:
         logging.info('CLEANING AUDIO')
@@ -92,14 +100,14 @@ if __name__ == '__main__':
     #TODO: add validation steps here
 
     if args.acoustics or args.all:
+
         logging.info('ACOUSTICS')
         while True:
             result = subprocess.run(
                 [
                     sys.executable,
                     "-m",
-                    "acoustics.birdnet_worker",
-                    "--batch-size", str(args.birdnet_batch_size),
+                    "acoustics.birdnet_worker"
                 ],
                 check=False,
             )

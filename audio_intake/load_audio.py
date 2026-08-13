@@ -9,7 +9,7 @@ from .Recording import Recording
 from database import InsertService
 
 
-def _get_wav_files(root_dir, batch_size=100, skipped_paths=None):
+def _get_wav_files(root_dir, batch_size, skipped_paths=None):
     """Return a batch of .wav file paths under ``root_dir``.
 
     Paths in ``skipped_paths`` are ignored for the duration of a load run.
@@ -68,7 +68,7 @@ def _remove_empty_directories(root_dir):
             continue
 
 
-def start_load(root_dir, db_engine, batch_id):
+def start_load(config, db_engine):
     '''
     Loops over all audio files in a given directory, creates objects and saves them to the database.
     :param: Root folder where all data is stored
@@ -76,13 +76,13 @@ def start_load(root_dir, db_engine, batch_id):
 
     inserter = InsertService(db_engine)
 
-    logging.info(f'Looking for data at location: {root_dir}.')
+    logging.info(f'Looking for data at location: {config.root_dir}.')
 
     skipped_paths = set()
     while True:
-        wav_files = _get_wav_files(root_dir, skipped_paths=skipped_paths)
+        wav_files = _get_wav_files(config.root_dir, config.batch_size, skipped_paths=skipped_paths)
         if wav_files is None or len(wav_files) == 0:
-            logging.info(f'There are no processable .wav files left in {root_dir}. Audio intake completed!')
+            logging.info(f'There are no processable .wav files left in {config.root_dir}. Audio intake completed!')
             break
         else:
             for file_path in wav_files:
@@ -99,7 +99,7 @@ def start_load(root_dir, db_engine, batch_id):
                     continue
 
                 try:
-                    rec.set_new_filepath(os.getenv('STORE_LOCATION'))
+                    rec.set_new_filepath(config.store_dir)
                 except Exception as err:
                     skipped_paths.add(rec.old_file_path)
                     logging.warning(
@@ -110,7 +110,7 @@ def start_load(root_dir, db_engine, batch_id):
                     continue
 
                 try:
-                    result = inserter.insert_staging_recording(rec, batch_id)
+                    result = inserter.insert_staging_recording(rec, config.batch_id)
                 except Exception as err:
                     skipped_paths.add(rec.old_file_path)
                     logging.warning(
@@ -131,6 +131,6 @@ def start_load(root_dir, db_engine, batch_id):
                 _move_recording_file(rec)
                 logging.info(f'Processed recording: {rec.filename}')
 
-            logging.info(f'Loaded {len(wav_files)} .wav files. Moving on to next batch')
+            logging.info(f'Loaded {len(wav_files)} .wav files.')
 
-    _remove_empty_directories(root_dir)
+    _remove_empty_directories(config.root_dir)
