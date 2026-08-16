@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, text
+from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, text, DateTime
 from database.tables.base import metadata
 
 Recording_staging = Table(
@@ -10,7 +10,7 @@ Recording_staging = Table(
     Column("rec_date", Date),
     Column("start_time", Time),
     Column("stop_time", Time),
-    Column('timestamp', TIMESTAMP),
+    Column('timestamp', DateTime),
     Column("duration", Integer),
     Column("file_path", String(255)),
     Column("file_size", Integer),
