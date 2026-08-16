@@ -176,7 +176,7 @@ def run(database_config, acoustic_config, geo_config, batch_size):
                 detection_service.persist_detections_and_mark_processed(
                     predictions_df,
                     recording['file_id'],
-                    MODEL_VERSION,
+                    acoustic_predictor.model_version
                 )
                 processed_recordings += 1
 

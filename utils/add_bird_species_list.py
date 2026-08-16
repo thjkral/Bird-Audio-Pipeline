@@ -2,8 +2,8 @@ import sys
 from pathlib import Path
 import os
 import dotenv
-
 import pandas as pd
+from Config import DatabaseConfig
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -12,11 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from database.MaintenanceService import DatabaseMaintenance
 from database.Engine import Engine
 
-def _get_db_credentials_dict():
-    db_credentials_dict = {'user': os.getenv('DATABASE_USER'),
-                           'password': os.getenv('DATABASE_PASSWORD'),
-                           'database': os.getenv('DATABASE_NAME')}
-    return db_credentials_dict
+
 
 
 if __name__ == '__main__':
@@ -27,6 +23,14 @@ if __name__ == '__main__':
     except FileNotFoundError:
         print("ERROR: Can't find config file")
         sys.exit(0)
+
+    database_config = DatabaseConfig(
+        os.getenv('DATABASE_USER'),
+        os.getenv('DATABASE_PASSWORD'),
+        os.getenv('DATABASE_NAME'),
+        os.getenv('DATABASE_HOST'),
+        os.getenv('DATABASE_PORT')
+    )
 
 
 
@@ -45,7 +49,7 @@ if __name__ == '__main__':
 
     print(f'Got {len(aves_filtered)} species. Writing to database...')
 
-    db_credentials = _get_db_credentials_dict()
-    db_engine = Engine(db_credentials)
+
+    db_engine = Engine(database_config)
     db_maintenance = DatabaseMaintenance(db_engine.engine)
     db_maintenance.insert_bird_species(aves_filtered)
