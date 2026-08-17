@@ -2,7 +2,7 @@ import logging
 
 import pandas as pd
 from sqlalchemy import select, Float, cast, insert
-from database.tables import Recording_cleaned, Microphone, Detection, BirdSpecies, DetectionProcessedRecordings
+from database.tables import Recording_final, Microphone, Detection, BirdSpecies, DetectionProcessedRecordings
 
 class DetectionService:
     def __init__(self, engine):
@@ -10,15 +10,15 @@ class DetectionService:
 
     def get_recordings(self):
         stmt = (
-            select(Recording_cleaned.c.id.label('file_id'),
-                   Recording_cleaned.c.timestamp,
-                   Recording_cleaned.c.rec_date,
-                   Recording_cleaned.c.file_path,
+            select(Recording_final.c.id.label('file_id'),
+                   Recording_final.c.timestamp,
+                   Recording_final.c.rec_date,
+                   Recording_final.c.file_path,
                    Microphone.c.id.label('mic_id'),
                    Microphone.c.longitude,
                    Microphone.c.latitude
                    )
-            .join(Microphone, Microphone.c.id==Recording_cleaned.c.microphone_id)
+            .join(Microphone, Microphone.c.id==Recording_final.c.microphone_id)
         )
 
         try:
@@ -42,18 +42,18 @@ class DetectionService:
         """
         stmt = (
             select(
-                Recording_cleaned.c.id.label('file_id'),
-                Recording_cleaned.c.timestamp,
-                Recording_cleaned.c.rec_date,
-                Recording_cleaned.c.file_path,
+                Recording_final.c.id.label('file_id'),
+                Recording_final.c.timestamp,
+                Recording_final.c.rec_date,
+                Recording_final.c.file_path,
                 Microphone.c.id.label('mic_id'),
                 Microphone.c.longitude,
                 Microphone.c.latitude,
             )
-            .join(Microphone, Microphone.c.id == Recording_cleaned.c.microphone_id)
+            .join(Microphone, Microphone.c.id == Recording_final.c.microphone_id)
             .outerjoin(
                 DetectionProcessedRecordings,
-                DetectionProcessedRecordings.c.recording_id == Recording_cleaned.c.id,
+                DetectionProcessedRecordings.c.recording_id == Recording_final.c.id,
             )
             .where(DetectionProcessedRecordings.c.recording_id.is_(None))
             .limit(batch_size)
