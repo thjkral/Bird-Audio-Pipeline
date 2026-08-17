@@ -14,6 +14,7 @@ from datetime import datetime
 from utils.Config import (DatabaseConfig, LoadConfig)
 from audio_intake import load_audio
 from clean_and_validate import clean_audio
+from transformations import transform
 from reports import make_reports
 from database import Engine, DatabaseMaintenance
 
@@ -50,16 +51,21 @@ if __name__ == '__main__':
     arguments.add_argument('-d', '--date', action='store', help='Date to load from. Keep empty to load all')
     arguments.add_argument('-c', '--clean_audio', action='store_true', help='Clean the imported recordings')
     arguments.add_argument('-v', '--validate_audio', action='store_true', help='Validate audio recording')
+    arguments.add_argument('-t', '--transformations', action='store_true', help='Transform the data where necessary')
     arguments.add_argument('-x', '--acoustics', action='store_true', help='Detect bird song')
     arguments.add_argument('-r', '--reports', action='store_true', help='Create report tables. Current reports will be overwritten')
     args = arguments.parse_args()
 
+    pipeline_start_time = datetime.now()
     logging.info(f'PIPELINE STARTED\n'
-                 f'\t\tStarted at= {datetime.now()}\n'
+                 f'\t\tStarted at= {pipeline_start_time}\n'
                  f'\t\tLoading audio= {args.load_audio}\n'
                  f'\t\tCleaning audio= {args.clean_audio}\n'
                  f'\t\tValidating audio= {args.validate_audio}\n'
-                 f'\t\tAcoustics= {args.acoustics}')
+                 f'\t\tAcoustics= {args.acoustics}\n'
+                 f'\t\tTransformations= {args.transformations}\n'
+                 f'\t\tAcoustics= {args.acoustics}\n'
+                 f'\t\tReports= {args.reports}\n')
 
     db_credentials = _get_db_credentials_dict()
 
@@ -97,7 +103,13 @@ if __name__ == '__main__':
             curr_batch_id += 1
         clean_audio.start_clean(db_engine.engine, curr_batch_id)
 
-    #TODO: add validation steps here
+    if args.validate_audio or args.all:
+        logging.info('Validating audio recordings not yet implemented!')
+        #validate_audio.validate(db_engine.engine)
+
+    if args.transformations or args.all:
+        logging.info('TRANSFORMATIONS')
+        transform.transform(db_engine.engine)
 
     if args.acoustics or args.all:
 
@@ -139,5 +151,13 @@ if __name__ == '__main__':
     if args.reports or args.all:
         logging.info('REPORTING')
         make_reports.generate_reports(db_engine.engine)
+
+
+    pipeline_stop_time = datetime.now()
+    total_runtime = pipeline_stop_time - pipeline_start_time
+    logging.info(f'PIPELINE STOPPED\n'
+                 f'\t\tStarted at= {pipeline_start_time}\n'
+                 f'\t\tStopped at= {pipeline_stop_time}\n'
+                 f'\t\tTotal runtime= {total_runtime}\n')
 
 
