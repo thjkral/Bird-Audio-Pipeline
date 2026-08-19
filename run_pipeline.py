@@ -18,6 +18,8 @@ from transformations import transform
 from reports import make_reports
 from database import Engine, DatabaseMaintenance
 
+from corvium_core.database.setup import initialize_database, populate_core_tables
+
 BIRDNET_BATCH_SIZE = 250
 
 def _get_db_credentials_dict():
@@ -69,6 +71,7 @@ if __name__ == '__main__':
 
     db_credentials = _get_db_credentials_dict()
 
+    # set up the database connection
     database_config = DatabaseConfig(
         os.getenv('DATABASE_USER'),
         os.getenv('DATABASE_PASSWORD'),
@@ -76,12 +79,15 @@ if __name__ == '__main__':
         os.getenv('DATABASE_HOST'),
         os.getenv('DATABASE_PORT')
     )
-
     db_engine = Engine(database_config)
 
+    # check the state of the core tables
+    initialize_database(db_engine.engine)
+    populate_core_tables(db_engine.engine)
+
+    # check the state of the audio tables
     database_maintenance = DatabaseMaintenance(db_engine.engine)
     database_maintenance.create_tables_if_not_exist()
-
 
     curr_batch_id = db_engine.get_latest_batch_id()
 
