@@ -38,5 +38,8 @@ python -m pip install --upgrade pip
 echo "Installing dependencies..."
 python -m pip install -r requirements.txt
 
+echo "Installing Corvium Core package"
+pip install -e /home/tom/Projects/corvium-core
+
 echo "Running pipeline..."
 python "$SCRIPT" "$@"
