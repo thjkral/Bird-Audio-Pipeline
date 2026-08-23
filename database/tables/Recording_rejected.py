@@ -1,9 +1,9 @@
 from sqlalchemy import Table, Column, String, Date, Time, Integer, Boolean, Enum, TIMESTAMP, text, DateTime
-from database.tables.base import metadata
+from database.tables.base import pipeline_metadata
 
 Recording_rejected = Table(
     "audio_Recording_rejected",
-    metadata,
+    pipeline_metadata,
     Column("id", String(64)),
     Column("file_name", String(255)),
     Column("microphone_id", String(10)),

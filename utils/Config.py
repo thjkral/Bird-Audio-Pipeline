@@ -30,12 +30,14 @@ class BirdnetConfig:
     batch_size: int
     overlap_s: float
     model_version: str
+    media_root: str
 
     def __post_init__(self):  # force datatypes
         self.workers = int(self.workers)
         self.batch_size = int(self.batch_size)
         self.overlap_s = float(self.overlap_s)
         self.model_version = str(self.model_version)
+        self.media_root = str(self.media_root)
 
 @dataclass
 class GeoConfig:

@@ -20,7 +20,7 @@ class InsertService():
             "stop_time": recording.stop_time,
             "timestamp": recording.timestamp,
             "duration": recording.duration,
-            "file_path": recording.new_file_path,
+            "relative_file_path": recording.new_file_path_rel,
             "file_size": recording.filesize,
             "samplerate": recording.samplerate,
             "channels": recording.channels,

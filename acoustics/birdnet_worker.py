@@ -154,9 +154,12 @@ def run(database_config, acoustic_config, geo_config, batch_size):
                     processed_recordings + 1,
                     len(recordings),
                 )
+
+                file_absolute_path = os.path.join(acoustic_config.media_root, recording['relative_filepath'])
+
                 acoustic_predictor = AcousticPrediction(
                     model=model,
-                    file_path=recording['file_path'],
+                    file_path=file_absolute_path,
                     custom_species_list=geo_predictor.get_prediction_as_set(),
                     config=acoustic_config
                 )
@@ -202,7 +205,8 @@ def main():
         os.getenv('BIRDNET_WORKERS'),
         os.getenv('BIRDNET_BATCH_SIZE'),
         os.getenv('BIRDNET_OVERLAP'),
-        os.getenv('BIRDNET_MODEL_VERSION')
+        os.getenv('BIRDNET_MODEL_VERSION'),
+        os.getenv('STORE_LOCATION'),
     )
     birdnet_geo_config = GeoConfig(
         os.getenv('GEO_MODEL_VERSION'),
