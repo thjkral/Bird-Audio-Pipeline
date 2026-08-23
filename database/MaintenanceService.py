@@ -1,4 +1,4 @@
-from database.tables.base import metadata
+from database.tables.base import pipeline_metadata
 from sqlalchemy import inspect, insert
 from database.tables import BirdSpecies
 import logging
@@ -13,7 +13,9 @@ class DatabaseMaintenance():
         inspector = inspect(self.engine)
         existing_tables = set(inspector.get_table_names())
 
-        for table in metadata.tables.values():
+        for table in pipeline_metadata.tables.values():
+            if not table.name.startswith("audio_"):  # don't handle tables outside of the pipeline
+                continue
             if table.name not in existing_tables:
                 print(f"Creating table: {table.name}")
                 table.create(self.engine)

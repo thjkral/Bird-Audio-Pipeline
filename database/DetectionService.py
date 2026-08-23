@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 from sqlalchemy import select, Float, cast, insert
 from database.tables import Recording_final, Microphone, Detection, BirdSpecies, DetectionProcessedRecordings
+from corvium_core.database.tables import Media, Device
 
 class DetectionService:
     def __init__(self, engine):
@@ -45,12 +46,13 @@ class DetectionService:
                 Recording_final.c.id.label('file_id'),
                 Recording_final.c.timestamp,
                 Recording_final.c.rec_date,
-                Recording_final.c.file_path,
-                Microphone.c.id.label('mic_id'),
-                Microphone.c.longitude,
-                Microphone.c.latitude,
+                Media.c.relative_filepath,
+                Device.c.device_id.label('mic_id'),
+                Device.c.longitude,
+                Device.c.latitude,
             )
-            .join(Microphone, Microphone.c.id == Recording_final.c.microphone_id)
+            .join(Device, Device.c.device_id == Recording_final.c.microphone_id)
+            .join(Media, Media.c.media_id == Recording_final.c.id)
             .outerjoin(
                 DetectionProcessedRecordings,
                 DetectionProcessedRecordings.c.recording_id == Recording_final.c.id,
@@ -67,10 +69,10 @@ class DetectionService:
     def get_microphone_location(self, microphone_id):
         stmt = (
             select(
-                cast(Microphone.c.latitude, Float).label("latitude"),
-                cast(Microphone.c.longitude, Float).label("longitude"),
+                cast(Device.c.latitude, Float).label("latitude"),
+                cast(Device.c.longitude, Float).label("longitude"),
             )
-            .where(Microphone.c.id == microphone_id)
+            .where(Device.c.device_id == microphone_id)
         )
 
         with self.engine.connect() as conn:

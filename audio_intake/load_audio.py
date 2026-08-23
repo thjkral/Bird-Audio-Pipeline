@@ -46,10 +46,10 @@ def _get_wav_files(root_dir, batch_size, skipped_paths=None):
 def _move_recording_file(recording):
     """Move a recording from its intake path to its storage path."""
     try:
-        os.makedirs(os.path.dirname(recording.new_file_path), exist_ok=True)
-        shutil.move(recording.old_file_path, recording.new_file_path)
+        os.makedirs(os.path.dirname(recording.new_file_path_abs), exist_ok=True)
+        shutil.move(recording.old_file_path, recording.new_file_path_abs)
     except Exception as err:
-        logging.error(f'Problem while moving file {recording.old_file_path} to {recording.new_file_path}:\n{err}')
+        logging.error(f'Problem while moving file {recording.old_file_path} to {recording.new_file_path_abs}:\n{err}')
 
 
 def _remove_empty_directories(root_dir):

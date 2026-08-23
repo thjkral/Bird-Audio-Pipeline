@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, Table
-from database.tables.base import metadata
+from database.tables.base import pipeline_metadata
 
 BirdSpecies = Table(
     "audio_BirdSpecies",
-    metadata,
+    pipeline_metadata,
     Column("birdnet_id", String(10), primary_key=True, unique=True),
     Column("scientific_name", String(200), unique=True),
     Column("scientific_name_aliases", String(600), unique=False),

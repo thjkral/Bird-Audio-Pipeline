@@ -77,7 +77,8 @@ class Recording:
         year = str(self.rec_date.year)
         month = str(self.rec_date.month)
 
-        self.new_file_path = os.path.join(save_location, year, month, self.filename)
+        self.new_file_path_abs = os.path.join(save_location, 'Birdsong', year, month, self.filename)
+        self.new_file_path_rel = os.path.join('Birdsong', year, month, self.filename)
 
 
     def __str__(self):

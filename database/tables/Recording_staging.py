@@ -1,18 +1,18 @@
-from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, text, DateTime
-from database.tables.base import metadata
+from sqlalchemy import Table, Column, String, Date, Time, Integer, TIMESTAMP, text, DateTime, ForeignKey
+from database.tables.base import pipeline_metadata
 
 Recording_staging = Table(
     "audio_Recording_staging",
-    metadata,
+    pipeline_metadata,
     Column("id", String(64)),
     Column("file_name", String(255)),
-    Column("microphone_id", String(10)),
+    Column("microphone_id", String(10), ForeignKey("core_Device.device_id")),
     Column("rec_date", Date),
     Column("start_time", Time),
     Column("stop_time", Time),
     Column('timestamp', DateTime),
     Column("duration", Integer),
-    Column("file_path", String(255)),
+    Column("relative_file_path", String(255)),
     Column("file_size", Integer),
     Column("samplerate", Integer),
     Column("channels", Integer),

@@ -3,6 +3,7 @@ import pandas as pd
 from sqlalchemy import insert, select
 
 from database.tables import Recording_cleaned, Recording_staging, Recording_rejected
+from corvium_core.database.tables import Media
 
 class CleaningService():
     def __init__(self, engine):
@@ -70,36 +71,63 @@ class CleaningService():
             logging.error(f'Cannot get unique historic hashes:\n{err}')
             return pd.DataFrame()
 
-
     def insert_cleaned_recordings(self, df, batch_size=1000):
         """
-        Memory-efficient bulk insert into MariaDB using SQLAlchemy.
+        Inserts accepted recordings into both Recording_cleaned and Media.
 
-        Uses streaming via itertuples() to avoid large intermediate objects.
+        Recording_cleaned contains the recording metadata.
+        Media contains the physical file reference.
         """
 
         if df.empty:
             return
 
-        stmt = insert(Recording_cleaned)
+        recording_stmt = insert(Recording_cleaned)
+        media_stmt = insert(Media)
 
-        # Convert column names once (faster access)
-        columns = df.columns
+        recording_columns = [
+            "id",
+            "file_name",
+            "microphone_id",
+            "rec_date",
+            "start_time",
+            "stop_time",
+            "timestamp",
+            "duration",
+            "file_size",
+            "samplerate",
+            "channels",
+            "bitdepth",
+            "file_hash",
+        ]
 
-        def row_to_dict(row):
-            return dict(zip(columns, row))
-
-        batch = []
+        media_columns = [
+            "media_id",
+            "media_type",
+            "relative_filepath",
+        ]
 
         with self.engine.begin() as conn:
-            for row in df.itertuples(index=False, name=None):
+            for i in range(0, len(df), batch_size):
+                batch = df.iloc[i:i + batch_size]
 
-                batch.append(row_to_dict(row))
+                recordings = (
+                    batch[recording_columns]
+                    .to_dict(orient="records")
+                )
 
-                if len(batch) >= batch_size:
-                    conn.execute(stmt, batch)
-                    batch.clear()
+                media = (
+                    batch[["id", "relative_file_path"]]
+                    .rename(
+                        columns={
+                            "id": "media_id",
+                            "relative_file_path": "relative_filepath",
+                        }
+                    )
+                    .assign(media_type="birdsong")
+                    [media_columns]
+                    .to_dict(orient="records")
+                )
 
-            # flush remaining rows
-            if batch:
-                conn.execute(stmt, batch)
+                conn.execute(media_stmt, media)
+                conn.execute(recording_stmt, recordings)
