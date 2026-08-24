@@ -97,18 +97,20 @@ def _append_to_log_table(dataframe, reject_type, db_conn):
         db_conn.insert_rejected_recordings(dataframe)
 
 
-def start_clean(db_engine, batch_id):
+def start_clean(db_engine):
     """
     Clean the staged recordings by running various checks. Accepted recordings are stored in the `Recording_cleaned`
     table, while rejected recordings are stored in the `Recording_rejected` table.
     """
-    logging.info(f'Cleaning data with batch ID: {batch_id}')
+    logging.info(f'Cleaning process initiated')
 
     clean_service = CleaningService(db_engine)
 
-    batch_df = clean_service.get_recordings_for_cleaning(batch_id)
+    batch_df = clean_service.get_recordings_for_cleaning()
 
-    if not batch_df.empty or batch_df is not None:
+    if batch_df.empty or batch_df is None:
+        logging.info('No recordings found for cleaning')
+    else:
         batch_df.drop('ingestion_at', axis=1, inplace=True)
 
         rows_in_batch = len(batch_df)
@@ -136,6 +138,3 @@ def start_clean(db_engine, batch_id):
 
         logging.info(f'Cleaning finished! Out of {rows_in_batch} recordings, {dups_in_history} passed')
         clean_service.insert_cleaned_recordings(no_historic_dups_df)
-
-    else:
-        logging.info('No recordings found for cleaning')

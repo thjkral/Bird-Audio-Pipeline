@@ -89,25 +89,20 @@ if __name__ == '__main__':
     database_maintenance = DatabaseMaintenance(db_engine.engine)
     database_maintenance.create_tables_if_not_exist()
 
-    curr_batch_id = db_engine.get_latest_batch_id()
-
     if args.load_audio or args.all:
         logging.info('Starting to load audio files')
 
         load_config = LoadConfig(
             os.getenv('DATA_ROOT_LOCATION'),
             os.getenv('STORE_LOCATION'),
-            os.getenv('LOAD_BATCH_SIZE'),
-            curr_batch_id + 1
+            os.getenv('LOAD_BATCH_SIZE')
         )
 
         load_audio.start_load(load_config, db_engine.engine)
 
     if args.clean_audio or args.all:
         logging.info('CLEANING AUDIO')
-        if args.all:
-            curr_batch_id += 1
-        clean_audio.start_clean(db_engine.engine, curr_batch_id)
+        clean_audio.start_clean(db_engine.engine)
 
     if args.validate_audio or args.all:
         logging.info('Validating audio recordings not yet implemented!')

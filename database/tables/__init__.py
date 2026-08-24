@@ -6,5 +6,6 @@ from .Recording_rejected import Recording_rejected
 from .BirdSpecies import BirdSpecies
 from .GeoConfidenceFlag import GeoConfidenceFlag
 from .Detection import Detection
+from .CleaningProcessedRecordings import CleaningProcessedRecordings
 from .DetectionProcessedRecordings import DetectionProcessedRecordings
 from .TransformationProcessedRecordings import TransformationProcessedRecordings

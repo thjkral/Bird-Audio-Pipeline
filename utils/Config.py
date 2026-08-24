@@ -15,13 +15,11 @@ class LoadConfig:
     root_dir: str
     store_dir: str
     batch_size: int
-    batch_id: int
 
     def __post_init__(self):  # force datatypes
         self.root_dir = str(self.root_dir)
         self.store_dir = str(self.store_dir)
         self.batch_size = int(self.batch_size)
-        self.batch_id = int(self.batch_id)
 
 @dataclass
 class BirdnetConfig:

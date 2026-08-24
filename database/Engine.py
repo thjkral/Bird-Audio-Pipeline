@@ -42,22 +42,4 @@ class Engine:
             exit(0)
 
 
-    def get_latest_batch_id(self):
-        """
-        Fetches the highest batch_id from Recording_staging
-        """
-        batch_id_query = text("""
-            SELECT DISTINCT batch_id
-            FROM audio_Recording_staging
-            ORDER BY batch_id DESC
-            LIMIT 1
-        """)
-        try:
-            with Session(self.engine) as session:
-                result = session.execute(batch_id_query).fetchone()
-                return int(result[0]) if result else 0
-        except Exception as err:
-            logging.critical(f'Cannot fetch latest batch_id:\n{err}')
-
-
 

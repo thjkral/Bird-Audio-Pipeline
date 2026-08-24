@@ -7,7 +7,7 @@ class InsertService():
         self.engine = engine
 
 
-    def _recording_to_staging_dict(self, recording, batch_id):
+    def _recording_to_staging_dict(self, recording):
         """
         Maps a Recording domain object to a dict matching Recording_staging table.
         """
@@ -25,18 +25,17 @@ class InsertService():
             "samplerate": recording.samplerate,
             "channels": recording.channels,
             "bitdepth": recording.bitdepth,
-            "file_hash": recording.file_hash,
-            "batch_id": batch_id
+            "file_hash": recording.file_hash
         }
 
 
-    def insert_staging_recording(self, recording, batch_id):
+    def insert_staging_recording(self, recording):
         """
         Inserts a single recording into Recording_staging.
         """
         stmt = insert(Recording_staging)
 
-        params = self._recording_to_staging_dict(recording, batch_id)
+        params = self._recording_to_staging_dict(recording)
 
         try:
             with self.engine.begin() as conn:
