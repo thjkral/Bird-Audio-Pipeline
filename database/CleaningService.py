@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 from sqlalchemy import insert, select
 
-from database.tables import Recording_cleaned, Recording_staging, Recording_rejected
+from database.tables import Recording_cleaned, Recording_staging, Recording_rejected, CleaningProcessedRecordings
 from corvium_core.database.tables import Media
 
 class CleaningService():
@@ -10,13 +10,17 @@ class CleaningService():
         self.engine = engine
 
 
-    def get_recordings_for_cleaning(self, batch_id):
+    def get_recordings_for_cleaning(self):
         """
-        Returns a pandas DataFrame of recordings for a given batch_id
+        Returns a pandas DataFrame of recordings without a cleaning processing state.
         """
         stmt = (
             select(Recording_staging)
-            .where(Recording_staging.c.batch_id == batch_id)
+            .outerjoin(
+                CleaningProcessedRecordings,
+                CleaningProcessedRecordings.c.recording_id == Recording_staging.c.id
+            )
+            .where(CleaningProcessedRecordings.c.recording_id.is_(None))
         )
 
         try:
@@ -28,7 +32,7 @@ class CleaningService():
                 return df
 
         except Exception as err:
-            logging.error(f'Cannot fetch dataframe for batch {batch_id}:\n{err}')
+            logging.error(f'Cannot fetch dataframe for cleaning:\n{err}')
             return pd.DataFrame()
 
 
@@ -49,6 +53,17 @@ class CleaningService():
                     conn.execute(
                         stmt,
                         batch.to_dict(orient="records")
+                    )
+
+                    conn.execute(
+                        insert(CleaningProcessedRecordings),
+                        [
+                            {
+                                'recording_id': recording_id,
+                                'passed': False,
+                            }
+                            for recording_id in df['id']
+                        ],
                     )
 
         except Exception as err:
@@ -131,3 +146,14 @@ class CleaningService():
 
                 conn.execute(media_stmt, media)
                 conn.execute(recording_stmt, recordings)
+
+                conn.execute(
+                    insert(CleaningProcessedRecordings),
+                    [
+                        {
+                            'recording_id': recording_id,
+                            'passed': True,
+                        }
+                        for recording_id in df['id']
+                    ],
+                )

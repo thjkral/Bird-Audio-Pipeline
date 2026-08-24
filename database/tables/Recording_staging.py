@@ -18,6 +18,5 @@ Recording_staging = Table(
     Column("channels", Integer),
     Column("bitdepth", Integer),
     Column("file_hash", String(64)),
-    Column("batch_id", Integer, nullable=False),
     Column("ingestion_at", TIMESTAMP, server_default=text("CURRENT_TIMESTAMP()")),
 )

@@ -110,7 +110,7 @@ def start_load(config, db_engine):
                     continue
 
                 try:
-                    result = inserter.insert_staging_recording(rec, config.batch_id)
+                    result = inserter.insert_staging_recording(rec)
                 except Exception as err:
                     skipped_paths.add(rec.old_file_path)
                     logging.warning(
