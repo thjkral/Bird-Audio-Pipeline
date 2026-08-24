@@ -2,37 +2,12 @@ import logging
 
 import pandas as pd
 from sqlalchemy import select, Float, cast, insert
-from database.tables import Recording_final, Microphone, Detection, BirdSpecies, DetectionProcessedRecordings
+from database.tables import Recording_final, Detection, BirdSpecies, DetectionProcessedRecordings
 from corvium_core.database.tables import Media, Device
 
 class DetectionService:
     def __init__(self, engine):
         self.engine = engine
-
-    def get_recordings(self):
-        stmt = (
-            select(Recording_final.c.id.label('file_id'),
-                   Recording_final.c.timestamp,
-                   Recording_final.c.rec_date,
-                   Recording_final.c.file_path,
-                   Microphone.c.id.label('mic_id'),
-                   Microphone.c.longitude,
-                   Microphone.c.latitude
-                   )
-            .join(Microphone, Microphone.c.id==Recording_final.c.microphone_id)
-        )
-
-        try:
-            with self.engine.connect() as conn:
-                result = conn.execute(stmt)
-
-                # Convert to DataFrame safely
-                df = pd.DataFrame(result.mappings().all())
-                return df
-
-        except Exception as err:
-            logging.error(f'Error getting recordings: {err}')
-            return pd.DataFrame()
 
     def get_unprocessed_recordings(self, batch_size):
         """Return at most ``batch_size`` recordings without a completed detection.
