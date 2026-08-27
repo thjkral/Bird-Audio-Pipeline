@@ -1,18 +1,18 @@
-CREATE OR REPLACE VIEW audio_agg_DetectionOverTime AS (
+CREATE OR REPLACE VIEW audio_agg_Detections AS (
     SELECT
         bs.common_name_nl AS Soort,
         DATE(rec.timestamp_DST_adjusted) AS Datum,
         YEAR(rec.timestamp_DST_adjusted) AS Jaar,
         MONTH(rec.timestamp_DST_adjusted) AS Maand,
+        HOUR(rec.timestamp_DST_adjusted) AS Uur,
         s.name_nl AS Seizoen,
-        COUNT(*) AS "Aantal detecties",
-        COUNT(DISTINCT d.recording_id) AS "Aantal opnames"
+        COUNT(*) AS Aantal
     FROM audio_Detection AS d
     JOIN audio_BirdSpecies as bs
         ON d.birdnet_id=bs.birdnet_id
     JOIN audio_Recording_final AS rec
         ON d.recording_id=rec.id
-        JOIN core_Season AS s
+    JOIN core_Season AS s
     ON (
         s.wraps_year = 0
         AND MONTH(rec.timestamp_DST_adjusted) BETWEEN s.start_month AND s.stop_month
@@ -25,5 +25,4 @@ CREATE OR REPLACE VIEW audio_agg_DetectionOverTime AS (
         )
     )
     GROUP BY bs.common_name_nl, rec.timestamp_DST_adjusted, s.name_nl
-    ORDER BY rec.timestamp_DST_adjusted
 );
