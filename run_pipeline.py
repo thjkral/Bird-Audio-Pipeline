@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     # Open and load the config
     try:
-        dotenv.load_dotenv('/etc/bird_audio_pipeline.conf')
+        dotenv.load_dotenv('/etc/corvium/bird_audio_pipeline.conf')
     except FileNotFoundError:
         print("ERROR: Can't find config file")
         sys.exit(0)
