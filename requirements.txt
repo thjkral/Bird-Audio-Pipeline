@@ -1,4 +1,5 @@
 #CORE
+corvium-core @ git+https://github.com/thjkral/corvium-core.git@v0.1.0
 python-dotenv
 tinytag
 pandas
