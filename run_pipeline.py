@@ -10,6 +10,7 @@ import os
 import subprocess
 
 from datetime import datetime
+from pathlib import Path
 
 from utils.Config import (DatabaseConfig, LoadConfig)
 from audio_intake import load_audio
@@ -38,7 +39,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set up logging
-    logfile = os.getenv('LOG_FILE_DIR') + str(datetime.now().strftime("%d-%m-%Y")) + '.log'
+    logfile_location = os.getenv('DATA_ROOT_LOCATION')
+    Path(logfile_location).mkdir(parents=True, exist_ok=True)
+    logfile_name = str(datetime.now().strftime("%d-%m-%Y")) + '.log'
+    logfile = os.path.join(logfile_location, logfile_name)
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s | %(levelname)s | %(message)s',
                         datefmt='%H:%M:%S',
