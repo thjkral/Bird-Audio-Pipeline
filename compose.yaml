@@ -6,6 +6,7 @@ services:
       - /mnt/corvium-data/Intake:/data/Intake
       - /mnt/corvium-data/Intake_test:/data/Intake_test
       - /mnt/corvium-data/PersistentStorage:/data/PersistentStorage
+      - /home/tom/Documents/logs/bird_audio_pipeline:/logs/bird_audio_pipeline
     networks:
       - Database-network
 
