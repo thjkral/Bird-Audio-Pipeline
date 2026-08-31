@@ -39,7 +39,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     # Set up logging
-    logfile_location = os.getenv('DATA_ROOT_LOCATION')
+    logfile_location = os.getenv('LOG_FILE_DIR')
     Path(logfile_location).mkdir(parents=True, exist_ok=True)
     logfile_name = str(datetime.now().strftime("%d-%m-%Y")) + '.log'
     logfile = os.path.join(logfile_location, logfile_name)
