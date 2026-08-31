@@ -1,0 +1,5 @@
+services:
+  bird-audio-pipeline:
+    image: corvium-birdsong:latest
+    volumes:
+      - /etc/corvium/bird_audio_pipeline.conf:/etc/corvium/bird_audio_pipeline.conf:ro
