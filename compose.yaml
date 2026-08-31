@@ -6,3 +6,9 @@ services:
       - /mnt/corvium-data/Intake:/data/Intake
       - /mnt/corvium-data/Intake_test:/data/Intake_test
       - /mnt/corvium-data/PersistentStorage:/data/PersistentStorage
+    networks:
+      - Database-network
+
+networks:
+  Database-network:
+    external: true
