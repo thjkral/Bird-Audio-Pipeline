@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
-CMD ["python", "run_pipeline.py"]
+ENTRYPOINT ["python", "run_pipeline.py"]
