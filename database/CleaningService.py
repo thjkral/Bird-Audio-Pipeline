@@ -55,16 +55,20 @@ class CleaningService():
                         batch.to_dict(orient="records")
                     )
 
-                    conn.execute(
-                        insert(CleaningProcessedRecordings),
-                        [
-                            {
-                                'recording_id': recording_id,
-                                'passed': False,
-                            }
-                            for recording_id in df['id']
-                        ],
-                    )
+                    processed_records = [
+                        {
+                            'recording_id': recording_id,
+                            'passed': False,
+                        }
+                        for recording_id, is_duplicate in zip(batch['id'], batch['is_duplicate'])
+                        if not is_duplicate
+                    ]
+
+                    if processed_records:
+                        conn.execute(
+                            insert(CleaningProcessedRecordings),
+                            processed_records,
+                        )
 
         except Exception as err:
             logging.error(f'Cannot insert rejected recordings:\n{err}')
