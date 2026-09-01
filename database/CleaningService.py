@@ -55,14 +55,23 @@ class CleaningService():
                         batch.to_dict(orient="records")
                     )
 
-                    processed_records = [
-                        {
-                            'recording_id': recording_id,
-                            'passed': False,
-                        }
-                        for recording_id, is_duplicate in zip(batch['id'], batch['is_duplicate'])
-                        if not is_duplicate
-                    ]
+                    if 'is_duplicate' in batch.columns:
+                        processed_records = [
+                            {
+                                'recording_id': recording_id,
+                                'passed': False,
+                            }
+                            for recording_id, is_duplicate in zip(batch['id'], batch['is_duplicate'])
+                            if not is_duplicate
+                        ]
+                    else:
+                        processed_records = [
+                            {
+                                'recording_id': recording_id,
+                                'passed': False,
+                            }
+                            for recording_id in batch['id']
+                        ]
 
                     if processed_records:
                         conn.execute(
