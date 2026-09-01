@@ -122,7 +122,7 @@ def start_clean(db_engine):
         logging.info(f'Number of null values in batch: {rows_in_batch - nulls_in_batch}')
 
         # Identify recording with a duration length out of range
-        outside_range_df = _check_recording_duration(batch_df, clean_service)
+        outside_range_df = _check_recording_duration(no_nulls_df, clean_service)
         outside_range_in_batch = len(outside_range_df)
         logging.info(f'Number of recordings with out of range duration: {nulls_in_batch - outside_range_in_batch}')
 
