@@ -1,140 +1,134 @@
+"""Classify staged audio recordings and persist the cleaning result."""
+
 import logging
-from datetime import datetime
+
 import pandas as pd
 
 from database import CleaningService
 
 
-def _check_null_values(dataframe, db, field_list=None):
-    df_clean = dataframe.dropna(axis=0,
-                                how='any',
-                                subset=field_list)
+MIN_DURATION_SECONDS = 60
+MAX_DURATION_SECONDS = 600
 
-    df_nans = dataframe[~dataframe.index.isin(df_clean.index)]
-    _append_to_log_table(df_nans, 'null', db)
+# Every value needed by Recording_cleaned or Media must be present. Keep this
+# list explicit so an unrelated staging/audit column cannot invalidate rows.
+REQUIRED_FIELDS = [
+    "id",
+    "file_name",
+    "microphone_id",
+    "rec_date",
+    "start_time",
+    "stop_time",
+    "timestamp",
+    "duration",
+    "relative_file_path",
+    "file_size",
+    "samplerate",
+    "channels",
+    "bitdepth",
+    "file_hash",
+]
 
-    return df_clean
 
-def _check_recording_duration(dataframe, db_conn):
+def _validate_columns(dataframe):
+    missing_columns = sorted(set(REQUIRED_FIELDS) - set(dataframe.columns))
+    if missing_columns:
+        raise ValueError(
+            "Staged recordings are missing required columns: "
+            + ", ".join(missing_columns)
+        )
+
+
+def _batch_duplicate_mask(dataframe):
+    """Find rows that would violate either cleaned-table unique key."""
+    duplicate_id = dataframe["id"].notna() & dataframe["id"].duplicated(
+        keep="first"
+    )
+    duplicate_hash = dataframe["file_hash"].notna() & dataframe[
+        "file_hash"
+    ].duplicated(keep="first")
+    return duplicate_id | duplicate_hash
+
+
+def classify_recordings(
+    dataframe,
+    historic_recordings=None,
+    min_duration=MIN_DURATION_SECONDS,
+    max_duration=MAX_DURATION_SECONDS,
+):
+    """Return ``(accepted, rejected)`` without modifying ``dataframe``.
+
+    Every check is evaluated independently against the full batch. Rejected
+    rows therefore retain all applicable failure flags, while only rows with
+    no failures are accepted.
     """
-    Check if the duration length is within range
-    :param dataframe: dataframe of recordings
-    :param db_conn: connection to database
-    :return: cleaned dataframe
-    """
-    min_duration = 60
-    max_duration = 600
+    if dataframe is None:
+        dataframe = pd.DataFrame()
+    if dataframe.empty:
+        return dataframe.copy(), dataframe.copy()
+    if min_duration > max_duration:
+        raise ValueError("Minimum duration cannot exceed maximum duration")
 
-    valid_mask = dataframe["duration"].between(min_duration, max_duration)
+    _validate_columns(dataframe)
+    classified = dataframe.drop(columns=["ingestion_at"], errors="ignore").copy()
 
-    clean_df = dataframe[valid_mask].copy()
-    outside_range_df = dataframe[~valid_mask].copy()
+    null_mask = classified[REQUIRED_FIELDS].isna().any(axis=1)
+    numeric_duration = pd.to_numeric(classified["duration"], errors="coerce")
+    duration_mask = classified["duration"].notna() & ~numeric_duration.between(
+        min_duration, max_duration, inclusive="both"
+    )
+    batch_duplicate_mask = _batch_duplicate_mask(classified)
 
-    _append_to_log_table(outside_range_df, "outside_range", db_conn)
-    return clean_df
-
-
-def _check_duplicates_batch(dataframe, db_conn):
-    """
-    Check if duplicates are present in the same dataframe. This indicates duplicate files within the same batch.
-    :param dataframe: dataframe of recordings
-    :param db_conn: connection to database
-    :return: cleaned dataframe
-    """
-    dataframe['is_duplicate'] = dataframe.duplicated(keep='first')
-
-    clean_df = dataframe[~dataframe['is_duplicate']].copy()
-    duplicates_df = dataframe[dataframe['is_duplicate']].copy()
-
-    _append_to_log_table(duplicates_df, 'duplicate_batch', db_conn)
-    return clean_df
-
-
-def _check_duplicates_historical(dataframe, db_conn):
-    """
-    Check if the dataframe contains recording already in the dataset. This indicates a recording loaded into the data
-    with an earlier run.
-    :param dataframe: dataframe of recordings
-    :param db_conn: connection to database
-    :return: cleaned dataframe
-    """
-    unique_file_hashes = db_conn.get_unique_historic_hashes()
-    if not unique_file_hashes.empty:
-        existing_set = set(unique_file_hashes["file_hash"])
-        mask = dataframe["file_hash"].isin(existing_set)
-
-        unique_rows = dataframe[~mask].copy()
-        duplicate_rows = dataframe[mask].copy()
-
-        _append_to_log_table(duplicate_rows, 'duplicate_historical', db_conn)
-        return unique_rows
+    if historic_recordings is not None and not historic_recordings.empty:
+        historic_ids = set(
+            historic_recordings.get("id", pd.Series(dtype=object)).dropna()
+        )
+        historic_hashes = set(
+            historic_recordings.get("file_hash", pd.Series(dtype=object)).dropna()
+        )
+        historical_duplicate_mask = classified["id"].isin(historic_ids) | classified[
+            "file_hash"
+        ].isin(historic_hashes)
     else:
-        logging.info('No historical recordings found for cleaning. If this is not the first time running the pipeline, '
-                     'this can be an error')
-        return dataframe
+        historical_duplicate_mask = pd.Series(False, index=classified.index)
 
+    duplicate_mask = batch_duplicate_mask | historical_duplicate_mask
+    classified["is_null"] = null_mask
+    classified["outside_range"] = duration_mask
+    classified["is_duplicate"] = duplicate_mask
+    classified["duplicate_type"] = None
+    classified.loc[batch_duplicate_mask, "duplicate_type"] = "batch"
+    # The current schema stores one duplicate subtype. If both apply,
+    # historical is the more important provenance to retain.
+    classified.loc[historical_duplicate_mask, "duplicate_type"] = "historical"
 
-def _append_to_log_table(dataframe, reject_type, db_conn):
-    """
-    Append rejected recordings to the log table with the reason for rejection
-    :param dataframe: dataframe with rejected recordings
-    :param reject_type: reason for rejecting the recordings
-    :param db_conn: connection to database
-    """
-    if reject_type == 'null':
-        dataframe['is_null'] = True
-        db_conn.insert_rejected_recordings(dataframe)
-    if reject_type == 'duplicate_batch':
-        dataframe["is_duplicate"] = True
-        dataframe["duplicate_type"] = 'batch'
-        db_conn.insert_rejected_recordings(dataframe)
-    if reject_type == 'duplicate_historical':
-        dataframe["is_duplicate"] = True
-        dataframe["duplicate_type"] = 'historical'
-        db_conn.insert_rejected_recordings(dataframe)
-    if reject_type == 'outside_range':
-        dataframe["outside_range"] = True
-        db_conn.insert_rejected_recordings(dataframe)
+    failed_mask = classified[
+        ["is_null", "outside_range", "is_duplicate"]
+    ].any(axis=1)
+    accepted = classified.loc[~failed_mask].copy()
+    rejected = classified.loc[failed_mask].copy()
+    return accepted, rejected
 
 
 def start_clean(db_engine):
-    """
-    Clean the staged recordings by running various checks. Accepted recordings are stored in the `Recording_cleaned`
-    table, while rejected recordings are stored in the `Recording_rejected` table.
-    """
-    logging.info(f'Cleaning process initiated')
-
+    """Clean all staged recordings that do not have a processed state."""
+    logging.info("Cleaning process initiated")
     clean_service = CleaningService(db_engine)
-
     batch_df = clean_service.get_recordings_for_cleaning()
 
-    if batch_df.empty or batch_df is None:
-        logging.info('No recordings found for cleaning')
-    else:
-        batch_df.drop('ingestion_at', axis=1, inplace=True)
+    if batch_df is None or batch_df.empty:
+        logging.info("No recordings found for cleaning")
+        return
 
-        rows_in_batch = len(batch_df)
-        logging.info(f'Number of recordings in batch: {len(batch_df)}')
+    historic_recordings = clean_service.get_unique_historic_hashes()
+    accepted, rejected = classify_recordings(batch_df, historic_recordings)
 
-        # Identify rows with missing values
-        no_nulls_df = _check_null_values(batch_df, clean_service)
-        nulls_in_batch = len(no_nulls_df)
-        logging.info(f'Number of null values in batch: {rows_in_batch - nulls_in_batch}')
-
-        # Identify recording with a duration length out of range
-        outside_range_df = _check_recording_duration(no_nulls_df, clean_service)
-        outside_range_in_batch = len(outside_range_df)
-        logging.info(f'Number of recordings with out of range duration: {nulls_in_batch - outside_range_in_batch}')
-
-        # Identify duplicate rows within the batch
-        no_batch_dups_df = _check_duplicates_batch(outside_range_df, clean_service)
-        dups_in_batch = len(no_batch_dups_df)
-        logging.info(f'Number of duplicates in batch: {outside_range_in_batch - dups_in_batch}')
-
-        # Identify duplicate rows within the historic data
-        no_historic_dups_df = _check_duplicates_historical(no_batch_dups_df, clean_service)
-        dups_in_history = len(no_historic_dups_df)
-        logging.info(f'Number of duplicates in history: {dups_in_batch - dups_in_history}')
-
-        logging.info(f'Cleaning finished! Out of {rows_in_batch} recordings, {dups_in_history} passed')
-        clean_service.insert_cleaned_recordings(no_historic_dups_df)
+    logging.info(
+        "Cleaning classified %d recordings: %d accepted and %d rejected",
+        len(batch_df),
+        len(accepted),
+        len(rejected),
+    )
+    clean_service.insert_rejected_recordings(rejected)
+    clean_service.insert_cleaned_recordings(accepted)
+    logging.info("Cleaning results saved successfully")

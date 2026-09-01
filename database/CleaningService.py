@@ -44,50 +44,57 @@ class CleaningService():
             return
 
         stmt = insert(Recording_rejected)
+        rejected_columns = [
+            column.name for column in Recording_rejected.columns
+            if column.name != 'rejected_at'
+        ]
 
         try:
             with self.engine.begin() as conn:
                 for i in range(0, len(df), batch_size):
-                    batch = df.iloc[i:i + batch_size]
+                    batch = df.iloc[i:i + batch_size].rename(
+                        columns={'relative_file_path': 'file_path'}
+                    )
+                    columns = [
+                        column for column in rejected_columns
+                        if column in batch.columns
+                    ]
+                    rejected = batch[columns].astype(object)
+                    rejected = rejected.where(pd.notna(rejected), None)
 
                     conn.execute(
                         stmt,
-                        batch.to_dict(orient="records")
+                        rejected.to_dict(orient="records")
                     )
 
-                    if 'is_duplicate' in batch.columns:
-                        processed_records = [
-                            {
-                                'recording_id': recording_id,
-                                'passed': False,
-                            }
-                            for recording_id, is_duplicate in zip(batch['id'], batch['is_duplicate'])
-                            if not is_duplicate
-                        ]
-                    else:
-                        processed_records = [
-                            {
-                                'recording_id': recording_id,
-                                'passed': False,
-                            }
-                            for recording_id in batch['id']
-                        ]
+                processed_df = df
+                if 'is_duplicate' in df.columns:
+                    processed_df = df[~df['is_duplicate'].fillna(False)]
 
-                    if processed_records:
-                        conn.execute(
-                            insert(CleaningProcessedRecordings),
-                            processed_records,
-                        )
+                processed_records = [
+                    {
+                        'recording_id': recording_id,
+                        'passed': False,
+                    }
+                    for recording_id in processed_df['id'].dropna().drop_duplicates()
+                ]
+
+                if processed_records:
+                    conn.execute(
+                        insert(CleaningProcessedRecordings),
+                        processed_records,
+                    )
 
         except Exception as err:
             logging.error(f'Cannot insert rejected recordings:\n{err}')
+            raise
 
 
     def get_unique_historic_hashes(self):
         """
-        Returns a DataFrame of existing file_hash values.
+        Returns existing identifiers used to detect historic duplicates.
         """
-        stmt = select(Recording_cleaned.c.file_hash)
+        stmt = select(Recording_cleaned.c.id, Recording_cleaned.c.file_hash)
 
         try:
             with self.engine.connect() as conn:
@@ -167,6 +174,6 @@ class CleaningService():
                             'recording_id': recording_id,
                             'passed': True,
                         }
-                        for recording_id in df['id']
+                        for recording_id in batch['id'].drop_duplicates()
                     ],
                 )
