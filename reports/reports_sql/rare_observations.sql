@@ -1,4 +1,5 @@
-CREATE OR REPLACE VIEW audio_agg_Rare_Observations AS (
+DROP TABLE IF EXISTS audio_agg_Rare_Observations;
+CREATE TABLE IF NOT EXISTS audio_agg_Rare_Observations AS (
     SELECT
         species.common_name_nl AS Soort,
         rec.rec_date AS Datum,

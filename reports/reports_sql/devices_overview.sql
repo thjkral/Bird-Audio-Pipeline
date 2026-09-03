@@ -1,4 +1,5 @@
-CREATE OR REPLACE VIEW core_agg_device_overview AS (
+DROP TABLE IF EXISTS core_agg_device_overview;
+CREATE TABLE IF NOT EXISTS core_agg_device_overview AS (
     SELECT
         device.device_id AS "Apparaat",
         device.type AS "Type",

@@ -1,4 +1,5 @@
-CREATE OR REPLACE VIEW audio_agg_Detections AS (
+DROP TABLE IF EXISTS audio_agg_Detections;
+CREATE TABLE IF NOT EXISTS audio_agg_Detections AS (
     SELECT
         bs.common_name_nl AS Soort,
         DATE(rec.timestamp_DST_adjusted) AS Datum,
@@ -24,5 +25,6 @@ CREATE OR REPLACE VIEW audio_agg_Detections AS (
             OR MONTH(rec.timestamp_DST_adjusted) <= s.stop_month
         )
     )
+    WHERE d.confidence_score >= 0.5
     GROUP BY bs.common_name_nl, rec.timestamp_DST_adjusted, s.name_nl
 );
