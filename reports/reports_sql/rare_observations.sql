@@ -2,10 +2,18 @@ DROP TABLE IF EXISTS audio_agg_Rare_Observations;
 CREATE TABLE IF NOT EXISTS audio_agg_Rare_Observations AS (
     SELECT
         species.common_name_nl AS Soort,
-        rec.rec_date AS Datum,
+        DATE(rec.timestamp_DST_adjusted) AS Datum,
+        DATE_FORMAT(rec.timestamp_DST_adjusted, '%H:%i:%s') AS Tijd,
         s.name_nl AS Seizoen,
         d.birdnet_week_number AS Birdnet_week,
         flag.name_nl AS Gradatie,
+        CONCAT(
+            '<a href="https://media.corvium.nl/',
+            media.relative_filepath,
+            '#t=',
+            GREATEST(MIN(d.window_start_s) - 1, 0),
+            '" target="_blank">Speel af</a>'
+            ) AS Opname,
         COUNT(*) AS Aantal
     FROM audio_Detection as d
     LEFT JOIN audio_BirdSpecies AS species
@@ -26,6 +34,8 @@ CREATE TABLE IF NOT EXISTS audio_agg_Rare_Observations AS (
                 OR MONTH(rec.timestamp_DST_adjusted) <= s.stop_month
             )
         )
-    WHERE d.confidence_score >= 0.5 AND d.geo_confidence_score < 0.2
-    GROUP BY species.common_name_nl, rec.rec_date, flag.name_nl, s.name_nl, d.birdnet_week_number
+    JOIN core_Media AS media
+        ON rec.id=media.media_id
+    WHERE d.confidence_score >= 0.5 AND d.geo_confidence_score < 0.2  AND rec.duration=60
+    GROUP BY species.common_name_nl, rec.timestamp_DST_adjusted, flag.name_nl, s.name_nl, d.birdnet_week_number, media.relative_filepath
 );
