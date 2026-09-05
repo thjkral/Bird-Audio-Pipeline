@@ -36,6 +36,6 @@ CREATE TABLE IF NOT EXISTS audio_agg_Rare_Observations AS (
         )
     JOIN core_Media AS media
         ON rec.id=media.media_id
-    WHERE d.confidence_score >= 0.5 AND d.geo_confidence_score < 0.2  AND rec.duration=60
+    WHERE d.confidence_score >= 0.5 AND d.geo_confidence_score < 0.2  AND YEAR(rec.timestamp_DST_adjusted) >= 2025
     GROUP BY species.common_name_nl, rec.timestamp_DST_adjusted, flag.name_nl, s.name_nl, d.birdnet_week_number, media.relative_filepath
 );
