@@ -11,7 +11,7 @@ SELECT
         MONTH(rec.timestamp_DST_adjusted) AS Maand,
         HOUR(rec.timestamp_DST_adjusted) AS Uur,
         TIME(rec.timestamp_DST_adjusted) AS Tijd,
-
+        mic.device_id AS Microfoon,
         CONCAT(
             '<a href="https://media.corvium.nl/',
             media.relative_filepath,
@@ -23,9 +23,10 @@ SELECT
         COUNT(*) AS Aantal,
         CONCAT("<h1>", bs.common_name_nl,"</h1>",
                 "<h3><i>", bs.scientific_name, "</i></h3><br />",
-                "Eerste waarneming: ", MIN(rec.timestamp_DST_adjusted), "<br />",
-                "Recenste waarneming: ", MAX(rec.timestamp_DST_adjusted)
-        ) AS Vogelinformatie
+                "Eerste waarneming: ", MIN(MIN(rec.timestamp_DST_adjusted)) OVER (PARTITION BY bs.scientific_name),
+                "<br />",
+                "Recenste waarneming: ", MAX(MAX(rec.timestamp_DST_adjusted)) OVER (PARTITION BY bs.scientific_name)
+                ) AS Vogelinformatie
     FROM audio_Detection AS d
     JOIN audio_BirdSpecies as bs
         ON d.birdnet_id=bs.birdnet_id
@@ -33,6 +34,8 @@ SELECT
         ON d.recording_id=rec.id
     JOIN core_Media AS media
         ON rec.id=media.media_id
+    JOIN core_Device AS mic
+        ON rec.microphone_id=mic.device_id
     JOIN core_Season AS s
     ON (
         s.wraps_year = 0
